@@ -5,139 +5,161 @@ import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
 
 export default function ExamSchedule() {
-  const location = useLocation();
-  const navigate = useNavigate();  // <-- add this
-  const { year, season, assignedSemester } = location.state || {};
-
+  const { year, session, semester } = useLocation().state || {};
+  const navigate = useNavigate();
   const [exams, setExams] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setSidebarOpen(o => !o);
 
+  // format "HH:MM" into "h:MM AM/PM"
+  const formatTime = timeStr => {
+    const [h, m] = timeStr.split(':').map(Number);
+    const suffix = h >= 12 ? 'PM' : 'AM';
+    const hour12 = ((h + 11) % 12) + 1;
+    return `${hour12}:${m.toString().padStart(2, '0')} ${suffix}`;
+  };
+
   useEffect(() => {
-    if (!year || !season || !assignedSemester) return;
+    if (!year || !session || !semester) return;
 
     async function fetchExams() {
       try {
         const token = localStorage.getItem('token');
-        const query = new URLSearchParams({ year, season, assignedSemester });
-        const res = await fetch(`/api/exams/filtered?${query.toString()}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+        const query = new URLSearchParams({ year, session, semester }).toString();
+        const res = await fetch(`/api/exams/filtered?${query}`, {
+          headers: { Authorization: `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error('Failed to fetch exams');
-        const data = await res.json();
-        setExams(data);
-      } catch (err) {
+        if (!res.ok) throw new Error();
+        setExams(await res.json());
+      } catch {
         alert('Failed to fetch exams');
       }
     }
+
     fetchExams();
-  }, [year, season, assignedSemester]);
+  }, [year, session, semester]);
 
-  // Aaj ki date
   const today = new Date();
-
-  // Filter upcoming and completed
   const upcoming = exams.filter(e => new Date(e.scheduleDate) >= today);
   const completed = exams.filter(e => new Date(e.scheduleDate) < today);
 
-  // New function to handle edit click
-  const handleEditClick = (examId) => {
-    navigate(`/editexam/${examId}`);
-  };
+  const handleEditClick = id => navigate(`/editexam/${id}`);
 
   return (
     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-
       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
         <Header toggleSidebar={toggleSidebar} />
-
         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8 space-y-12">
-          {/* Upcoming Exam */}
+
+          {/* Upcoming Exams */}
           <section>
             <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-4">
-              Upcoming Exam
+              Upcoming Exams – Semester {semester}
             </h1>
-
             {upcoming.length === 0 ? (
               <p className="text-center text-gray-500">No upcoming exams.</p>
             ) : (
               <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-hidden">
-                <table className="w-full text-left">
+                <table className="w-full text-left table-fixed">
                   <thead className="bg-[#002855] text-white text-sm font-light">
                     <tr>
                       <th className="p-3 [@media(min-width:846px)]:p-4">Subject</th>
                       <th className="p-3 [@media(min-width:846px)]:p-4">Exam No.</th>
+                      <th className="p-3 [@media(min-width:846px)]:p-4">Duration</th>
                       <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Date</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Total Students</th>
+                      <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Time</th>
                       <th className="p-3 [@media(min-width:846px)]:p-4">Status</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Edit</th>
+                      <th className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
+                        Edit
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="text-black text-md">
-  {upcoming.map((exam, i) => (
-    <tr key={i} className="hover:bg-gray-50 border-t">
-      <td className="p-3 [@media(min-width:846px)]:p-4">{exam.subject}</td>
-      <td className="p-3 [@media(min-width:846px)]:p-4">{exam.examNo}</td>
-      <td className="p-3 [@media(min-width:846px)]:p-4">{new Date(exam.scheduleDate).toLocaleDateString()}</td>
-      <td className="p-3 [@media(min-width:846px)]:p-4">{null}</td>
-      <td className="p-3 [@media(min-width:846px)]:p-4">Scheduled</td>
-      <td className="p-3 [@media(min-width:846px)]:p-4 text-center">
-        <button
-          onClick={() => handleEditClick(exam._id)}
-          title="Edit Exam"
-          className="text-lg cursor-pointer p-1 rounded hover:bg-blue-200 hover:text-blue-800 transition"
-          type="button"
-        >
-          ✏️
-        </button>
-      </td>
-    </tr>
-  ))}
-</tbody>
-
+                    {upcoming.map((exam, i) => (
+                      <tr key={i} className="hover:bg-gray-50 border-t">
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {exam.subject}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {exam.examNo}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {exam.duration} min
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {new Date(exam.scheduleDate).toLocaleDateString()}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {formatTime(exam.scheduleTime)}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          Scheduled
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
+                          <button
+                            onClick={() => handleEditClick(exam._id)}
+                            title="Edit Exam"
+                            className="text-lg p-1 rounded hover:bg-blue-200 hover:text-blue-800 transition cursor-pointer"
+                          >
+                            <i
+                              className="fa-solid fa-pencil"
+                              style={{ color: '#FFD43B' }}
+                            ></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
               </div>
             )}
           </section>
 
-          {/* Completed Exam */}
+          {/* Completed Exams */}
           <section>
             <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-4">
-              Completed Exam
+              Completed Exams – Semester {semester}
             </h1>
-
             {completed.length === 0 ? (
               <p className="text-center text-gray-500">No completed exams.</p>
             ) : (
               <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-hidden">
-                <table className="w-full text-left">
+                <table className="w-full text-left table-fixed">
                   <thead className="bg-[#002855] text-white text-sm font-light">
                     <tr>
                       <th className="p-3 [@media(min-width:846px)]:p-4">Subject</th>
                       <th className="p-3 [@media(min-width:846px)]:p-4">Exam No.</th>
+                      <th className="p-3 [@media(min-width:846px)]:p-4">Duration</th>
                       <th className="p-3 [@media(min-width:846px)]:p-4">Exam Date</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Total Students</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Passed</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Failed</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">View Results</th>
+                      <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Time</th>
+                      <th className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
+                        View Results
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="text-black text-md">
                     {completed.map((exam, i) => (
                       <tr key={i} className="hover:bg-gray-50 border-t">
-                        <td className="p-3 [@media(min-width:846px)]:p-4">{exam.subject}</td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">{exam.examNo}</td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">{new Date(exam.scheduleDate).toLocaleDateString()}</td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">{null /* Total students not available */}</td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">{null /* Passed count not available */}</td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">{null /* Failed count not available */}</td>
                         <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {exam.subject}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {exam.examNo}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {exam.duration} min
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {new Date(exam.scheduleDate).toLocaleDateString()}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4">
+                          {formatTime(exam.scheduleTime)}
+                        </td>
+                        <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
                           <Link to="/viewresults">
-                            <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition">
+                            <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition cursor-pointer">
                               View
                             </button>
                           </Link>
@@ -149,6 +171,7 @@ export default function ExamSchedule() {
               </div>
             )}
           </section>
+
         </div>
       </div>
     </div>

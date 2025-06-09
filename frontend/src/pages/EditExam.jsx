@@ -13,7 +13,7 @@ export default function EditExam() {
   const [form, setForm] = useState({
     year: '',
     semester: '',
-    season: '',
+    session: '',
     subject: '',
     examNo: '',
     duration: '',
@@ -40,7 +40,7 @@ export default function EditExam() {
         setForm({
           year: data.year,
           semester: data.semester,
-          season: data.season,
+          session: data.session,
           subject: data.subject,
           examNo: data.examNo,
           duration: data.duration,
@@ -122,7 +122,7 @@ export default function EditExam() {
     const payload = {
       ...form,
       duration: Number(form.duration),
-      assignedSemester: `${form.season} ${form.year}`,
+      assignedSemester: `${form.session} ${form.year}`,
       questions,
     };
 
@@ -182,9 +182,9 @@ export default function EditExam() {
             />
             <input
               type="text"
-              name="season"
+              name="session"
               placeholder="Fall / Spring"
-              value={form.season}
+              value={form.session}
               onChange={handleFormChange}
               className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
               required

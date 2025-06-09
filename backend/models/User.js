@@ -33,6 +33,12 @@ const userSchema = new mongoose.Schema({
     required: function() { return this.role === 'student'; },
     min: 1
   },
+  section: {
+    type: String,
+    enum: ['A', 'B', 'C', 'D'],
+    required: function() { return this.role === 'student'; },
+    trim: true
+  },
   registrationNumber: {
     type: String,
     required: function() { return this.role === 'student'; },

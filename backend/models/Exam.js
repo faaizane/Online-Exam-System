@@ -1,4 +1,4 @@
-// models/Exam.js
+// File: models/Exam.js
 const mongoose = require('mongoose');
 
 const questionSchema = new mongoose.Schema({
@@ -10,7 +10,7 @@ const questionSchema = new mongoose.Schema({
 const examSchema = new mongoose.Schema({
   year: { type: String, required: true },
   semester: { type: String, required: true },
-  season: { type: String, required: true },
+  session: { type: String, required: true },   // renamed from `season`
   subject: { type: String, required: true },
   examNo: { type: String, required: true },
   questions: {
@@ -20,9 +20,9 @@ const examSchema = new mongoose.Schema({
   },
   assignedSemester: { type: String, required: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  duration: { type: Number, required: true }, // minutes
-  scheduleDate: { type: Date, required: true }, // exam ki date
-  scheduleTime: { type: String, required: true }, // exam ka start time, e.g. '14:30'
+  duration: { type: Number, required: true },
+  scheduleDate: { type: Date, required: true },
+  scheduleTime: { type: String, required: true },
 }, {
   timestamps: true,
 });

@@ -1,4 +1,4 @@
-// backend/controllers/examController.js
+// File: controllers/examController.js
 const multer = require('multer');
 const fs = require('fs');
 const pdfParse = require('pdf-parse');
@@ -18,7 +18,7 @@ function parseTextToQuestions(text) {
       currentQuestion = {
         questionText: line.replace(/^Q\d+\.\s*/, ''),
         options: [],
-        correctAnswerIndex: null,
+        correctAnswerIndex: null
       };
     } else if (/^[abcd]\)/i.test(line) && currentQuestion) {
       currentQuestion.options.push(line.slice(2).trim());
@@ -39,7 +39,7 @@ exports.createExam = async (req, res) => {
     const {
       year,
       semester,
-      season,
+      session,         // renamed
       subject,
       examNo,
       questions,
@@ -49,7 +49,7 @@ exports.createExam = async (req, res) => {
       scheduleTime,
     } = req.body;
 
-    if (!year || !semester || !season || !subject || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
+    if (!year || !semester || !session || !subject || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -60,7 +60,7 @@ exports.createExam = async (req, res) => {
     const newExam = new Exam({
       year,
       semester,
-      season,
+      session,         // renamed
       subject,
       examNo,
       questions,
@@ -72,7 +72,6 @@ exports.createExam = async (req, res) => {
     });
 
     await newExam.save();
-
     return res.status(201).json({ message: 'Exam created successfully', exam: newExam });
   } catch (err) {
     console.error('CreateExam error:', err);
@@ -90,7 +89,6 @@ exports.uploadFile = (req, res, next) => {
       if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
       let text = '';
-
       if (file.mimetype === 'application/pdf') {
         const dataBuffer = fs.readFileSync(file.path);
         const pdfData = await pdfParse(dataBuffer);
@@ -112,7 +110,6 @@ exports.uploadFile = (req, res, next) => {
       if (questions.length === 0) {
         return res.status(400).json({ message: 'No questions found in file' });
       }
-
       return res.json({ questions });
     } catch (error) {
       console.error(error);
@@ -121,21 +118,18 @@ exports.uploadFile = (req, res, next) => {
   });
 };
 
-
-// NEW API: Get exams grouped by year-season and semesters
 exports.getGroupedExams = async (req, res) => {
   try {
     const exams = await Exam.find().lean();
-
     const grouped = {};
 
     exams.forEach(exam => {
-      const key = `${exam.year}-${exam.season}`;
+      const key = `${exam.year}-${exam.session}`;  // renamed
 
       if (!grouped[key]) {
         grouped[key] = {
           year: exam.year,
-          season: exam.season,
+          session: exam.session,                   // renamed
           semesters: {}
         };
       }
@@ -143,7 +137,6 @@ exports.getGroupedExams = async (req, res) => {
       if (!grouped[key].semesters[exam.assignedSemester]) {
         grouped[key].semesters[exam.assignedSemester] = [];
       }
-
       grouped[key].semesters[exam.assignedSemester].push(exam);
     });
 
@@ -154,19 +147,18 @@ exports.getGroupedExams = async (req, res) => {
   }
 };
 
-// NEW API: Get exams filtered by year, season and assignedSemester
 exports.getExamsByFilter = async (req, res) => {
   try {
-    const { year, season, assignedSemester } = req.query;
+    const { year, session, semester } = req.query;  // renamed
 
-    if (!year || !season || !assignedSemester) {
+    if (!year || !session || !semester) {
       return res.status(400).json({ message: 'Missing filter parameters' });
     }
 
     const exams = await Exam.find({
       year,
-      season,
-      assignedSemester
+      session,   // renamed
+      semester
     }).lean();
 
     res.json(exams);
@@ -176,14 +168,10 @@ exports.getExamsByFilter = async (req, res) => {
   }
 };
 
-
-// Get exam by ID
 exports.getExamById = async (req, res) => {
   try {
     const exam = await Exam.findById(req.params.id).lean();
-    if (!exam) {
-      return res.status(404).json({ message: 'Exam not found' });
-    }
+    if (!exam) return res.status(404).json({ message: 'Exam not found' });
     res.json(exam);
   } catch (err) {
     console.error(err);
@@ -191,14 +179,13 @@ exports.getExamById = async (req, res) => {
   }
 };
 
-// Update exam by ID
 exports.updateExamById = async (req, res) => {
   try {
     const examId = req.params.id;
     const {
       year,
       semester,
-      season,
+      session,  // renamed
       subject,
       examNo,
       questions,
@@ -208,8 +195,7 @@ exports.updateExamById = async (req, res) => {
       scheduleTime,
     } = req.body;
 
-    // Validation (basic example)
-    if (!year || !semester || !season || !subject || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
+    if (!year || !semester || !session || !subject || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
@@ -218,7 +204,7 @@ exports.updateExamById = async (req, res) => {
       {
         year,
         semester,
-        season,
+        session,        // renamed
         subject,
         examNo,
         questions,
@@ -233,7 +219,6 @@ exports.updateExamById = async (req, res) => {
     if (!updatedExam) {
       return res.status(404).json({ message: 'Exam not found' });
     }
-
     res.json({ message: 'Exam updated successfully', exam: updatedExam });
   } catch (err) {
     console.error(err);
