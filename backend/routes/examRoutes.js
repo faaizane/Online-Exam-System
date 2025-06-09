@@ -11,6 +11,15 @@ router.post('/upload', protect, authorize('teacher'), examController.uploadFile)
 router.get('/grouped', protect, authorize('teacher'), examController.getGroupedExams);
 router.get('/filtered', protect, authorize('teacher'), examController.getExamsByFilter);
 
+// Add just after your other GETs:
+router.get(
+  '/recent',
+  protect,
+  authorize('teacher'),
+  examController.getRecentExams
+);
+
+
 router.get('/:id', protect, authorize('teacher'), examController.getExamById);
 router.put('/:id', protect, authorize('teacher'), examController.updateExamById);
 

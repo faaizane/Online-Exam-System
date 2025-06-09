@@ -225,3 +225,21 @@ exports.updateExamById = async (req, res) => {
     res.status(500).json({ message: 'Server error updating exam' });
   }
 };
+
+// Add at the bottom of controllers/examController.js:
+
+// GET /api/exams/recent
+exports.getRecentExams = async (req, res) => {
+  try {
+    // Fetch the 5 most recent exams by scheduleDate descending
+    const exams = await Exam.find()
+      .sort({ scheduleDate: -1 })
+      .limit()
+      .lean();
+
+    res.json(exams);
+  } catch (err) {
+    console.error('GetRecentExams error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
