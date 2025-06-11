@@ -32,6 +32,10 @@ import ViewResults       from './pages/ViewResults';
 import ExamSchedule      from './pages/ExamSchedule';
 import TeacherProfile    from './pages/TeacherProfile';
 
+// ← NEW:
+import SubjectStudents   from './pages/SubjectStudents';
+import AddSubject        from './pages/AddSubject';
+
 export default function App() {
   return (
     <Router>
@@ -182,6 +186,23 @@ export default function App() {
           element={
             <PrivateRoute allowedRoles={['teacher']}>
               <TeacherProfile />
+            </PrivateRoute>
+          }
+        />
+        {/* ← NEW ROUTE for subject’s students */}
+        <Route
+          path="/subjects/:id/students"
+          element={
+            <PrivateRoute allowedRoles={['teacher']}>
+              <SubjectStudents />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/add-subject"
+          element={
+            <PrivateRoute allowedRoles={['teacher']}>
+              <AddSubject />
             </PrivateRoute>
           }
         />

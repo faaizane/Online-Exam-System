@@ -58,62 +58,94 @@ export default function ExamSchedule() {
             <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-4">
               Upcoming Exams – Semester {semester}
             </h1>
+
             {upcoming.length === 0 ? (
               <p className="text-center text-gray-500">No upcoming exams.</p>
             ) : (
-              <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-hidden">
-                <table className="w-full text-left table-fixed">
-                  <thead className="bg-[#002855] text-white text-sm font-light">
-                    <tr>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Subject</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Exam No.</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Duration</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Date</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Time</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Status</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
-                        Edit
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-black text-md">
-                    {upcoming.map((exam, i) => (
-                      <tr key={i} className="hover:bg-gray-50 border-t">
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {exam.subject}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {exam.examNo}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {exam.duration} min
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {new Date(exam.scheduleDate).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {formatTime(exam.scheduleTime)}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          Scheduled
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
-                          <button
-                            onClick={() => handleEditClick(exam._id)}
-                            title="Edit Exam"
-                            className="text-lg p-1 rounded hover:bg-blue-200 hover:text-blue-800 transition cursor-pointer"
-                          >
-                            <i
-                              className="fa-solid fa-pencil"
-                              style={{ color: '#FFD43B' }}
-                            ></i>
-                          </button>
-                        </td>
+              <>
+                {/* Desktop Table (486px+) */}
+                <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-hidden">
+                  <table className="w-full text-left table-fixed">
+                    <thead className="bg-[#002855] text-white text-sm font-light">
+                      <tr>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Subject</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Exam No.</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Duration</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Date</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Time</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Status</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
+                          Edit
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="text-black text-md">
+                      {upcoming.map((exam, i) => (
+                        <tr key={i} className="hover:bg-gray-50 border-t">
+                          <td className="p-3 [@media(min-width:846px)]:p-4">{exam.subject}</td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">{exam.examNo}</td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">{exam.duration} min</td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">
+                            {new Date(exam.scheduleDate).toLocaleDateString()}
+                          </td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">
+                            {formatTime(exam.scheduleTime)}
+                          </td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">Scheduled</td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
+                            <button
+                              onClick={() => handleEditClick(exam._id)}
+                              title="Edit Exam"
+                              className="text-lg p-1 rounded hover:bg-blue-200 hover:text-blue-800 transition"
+                            >
+                              <i
+                                className="fa-solid fa-pencil"
+                                style={{ color: '#FFD43B' }}
+                              ></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards (<486px) */}
+                <div className="block [@media(min-width:486px)]:hidden space-y-4">
+                  {upcoming.map((exam, i) => (
+                    <div
+                      key={i}
+                      className="bg-white p-4 rounded-xl shadow-md flex flex-col space-y-2"
+                    >
+                      <div className="flex justify-between items-center">
+                        <h2 className="font-semibold text-lg text-[#002855]">
+                          {exam.subject}
+                        </h2>
+                        <button
+                          onClick={() => handleEditClick(exam._id)}
+                          title="Edit Exam"
+                          className="p-2 rounded hover:bg-blue-200 hover:text-blue-800 transition"
+                        >
+                          <i
+                            className="fa-solid fa-pencil"
+                            style={{ color: '#FFD43B' }}
+                          />
+                        </button>
+                      </div>
+                      <p><strong>Exam No.:</strong> {exam.examNo}</p>
+                      <p><strong>Duration:</strong> {exam.duration} min</p>
+                      <p>
+                        <strong>Date:</strong>{' '}
+                        {new Date(exam.scheduleDate).toLocaleDateString()}
+                      </p>
+                      <p><strong>Time:</strong> {formatTime(exam.scheduleTime)}</p>
+                      <span className="self-start text-sm font-medium text-green-600">
+                        Scheduled
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </section>
 
@@ -122,53 +154,77 @@ export default function ExamSchedule() {
             <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-4">
               Completed Exams – Semester {semester}
             </h1>
+
             {completed.length === 0 ? (
               <p className="text-center text-gray-500">No completed exams.</p>
             ) : (
-              <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-hidden">
-                <table className="w-full text-left table-fixed">
-                  <thead className="bg-[#002855] text-white text-sm font-light">
-                    <tr>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Subject</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Exam No.</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Duration</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Exam Date</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Time</th>
-                      <th className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
-                        View Results
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-black text-md">
-                    {completed.map((exam, i) => (
-                      <tr key={i} className="hover:bg-gray-50 border-t">
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {exam.subject}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {exam.examNo}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {exam.duration} min
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {new Date(exam.scheduleDate).toLocaleDateString()}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4">
-                          {formatTime(exam.scheduleTime)}
-                        </td>
-                        <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
-                          <Link to="/viewresults">
-                            <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition cursor-pointer">
-                              View
-                            </button>
-                          </Link>
-                        </td>
+              <>
+                {/* Desktop Table (486px+) */}
+                <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-hidden">
+                  <table className="w-full text-left table-fixed">
+                    <thead className="bg-[#002855] text-white text-sm font-light">
+                      <tr>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Subject</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Exam No.</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Duration</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Exam Date</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4">Scheduled Time</th>
+                        <th className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
+                          View Results
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="text-black text-md">
+                      {completed.map((exam, i) => (
+                        <tr key={i} className="hover:bg-gray-50 border-t">
+                          <td className="p-3 [@media(min-width:846px)]:p-4">{exam.subject}</td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">{exam.examNo}</td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">{exam.duration} min</td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">
+                            {new Date(exam.scheduleDate).toLocaleDateString()}
+                          </td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4">
+                            {formatTime(exam.scheduleTime)}
+                          </td>
+                          <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center items-center">
+                            <Link to="/viewresults">
+                              <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition">
+                                View
+                              </button>
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Cards (<486px) */}
+                <div className="block [@media(min-width:486px)]:hidden space-y-4">
+                  {completed.map((exam, i) => (
+                    <div
+                      key={i}
+                      className="bg-white p-4 rounded-xl shadow-md flex flex-col space-y-2"
+                    >
+                      <h2 className="font-semibold text-lg text-[#002855]">
+                        {exam.subject}
+                      </h2>
+                      <p><strong>Exam No.:</strong> {exam.examNo}</p>
+                      <p><strong>Duration:</strong> {exam.duration} min</p>
+                      <p>
+                        <strong>Date:</strong>{' '}
+                        {new Date(exam.scheduleDate).toLocaleDateString()}
+                      </p>
+                      <p><strong>Time:</strong> {formatTime(exam.scheduleTime)}</p>
+                      <Link to="/viewresults" className="self-start">
+                        <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition">
+                          View Results
+                        </button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </section>
 
@@ -177,3 +233,4 @@ export default function ExamSchedule() {
     </div>
   );
 }
+
