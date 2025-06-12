@@ -1,16 +1,33 @@
 // File: controllers/examController.js
-const multer = require('multer');
-const fs = require('fs');
-const pdfParse = require('pdf-parse');
-const mammoth = require('mammoth');
-const Exam = require('../models/Exam');
 
-const Subject   = require('../models/Subject');     // ← NEW
+const multer   = require('multer');
+const fs       = require('fs');
+const pdfParse = require('pdf-parse');
+const mammoth  = require('mammoth');
+const Exam     = require('../models/Exam');
+const Subject  = require('../models/Subject');
 
 const upload = multer({ dest: 'uploads/' });
 
+/**
+ * Normalize any “quiz” + number input into “Quiz No. XX”
+ */
+function normalizeExamNo(raw) {
+  const m = raw.match(/\d+/);
+  if (!m) return raw.trim();
+  const num = m[0].padStart(2, '0');
+  return `Quiz No. ${num}`;
+}
+
+/**
+ * Parse a block of raw text into question objects.
+ */
 function parseTextToQuestions(text) {
-  const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+  const lines = text
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+
   const questions = [];
   let currentQuestion = null;
 
@@ -25,9 +42,10 @@ function parseTextToQuestions(text) {
     } else if (/^[abcd]\)/i.test(line) && currentQuestion) {
       currentQuestion.options.push(line.slice(2).trim());
     } else if (/^Answer:/i.test(line) && currentQuestion) {
-      const ansLetter = line.match(/^Answer:\s*([abcd])/i);
-      if (ansLetter) {
-        currentQuestion.correctAnswerIndex = ['a','b','c','d'].indexOf(ansLetter[1].toLowerCase());
+      const match = line.match(/^Answer:\s*([abcd])/i);
+      if (match) {
+        currentQuestion.correctAnswerIndex =
+          ['a','b','c','d'].indexOf(match[1].toLowerCase());
       }
     }
   });
@@ -36,184 +54,11 @@ function parseTextToQuestions(text) {
   return questions;
 }
 
-
-exports.createExam = async (req, res) => {
-  try {
-    const {
-      year,
-      semester,
-      session,
-      subject: subjectId,            // ← rename
-      examNo,
-      questions,
-      assignedSemester,
-      duration,
-      scheduleDate,
-      scheduleTime,
-    } = req.body;
-
-    // Basic validation
-    if (!year || !semester || !session || !subjectId || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-    if (typeof duration !== 'number' || duration <= 0) {
-      return res.status(400).json({ message: 'Duration must be a positive number' });
-    }
-
-    // 1) Validate & authorize Subject
-    const subjectDoc = await Subject.findById(subjectId).lean();
-    if (!subjectDoc) {
-      return res.status(404).json({ message: 'Subject not found' });
-    }
-    if (subjectDoc.teacher.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to use this subject' });
-    }
-    if (subjectDoc.year.toString() !== year.toString()
-        || subjectDoc.session !== session.trim().toLowerCase()) {
-      return res.status(400).json({
-        message: 'Selected subject does not match the specified year or session'
-      });
-    }
-
-    // 2) Build Exam with assignedStudents from Subject
-    const newExam = new Exam({
-      year,
-      semester,
-      session,
-      subject: subjectId,
-      assignedStudents: subjectDoc.students,   // ← NEW
-      examNo,
-      questions,
-      assignedSemester,
-      duration,
-      scheduleDate: new Date(scheduleDate),
-      scheduleTime,
-      createdBy: req.user.id,
-    });
-
-    await newExam.save();
-    res.status(201).json({ message: 'Exam created successfully', exam: newExam });
-  } catch (err) {
-    console.error('CreateExam error:', err);
-    res.status(500).json({ message: err.message || 'Server error' });
-  }
-};
-
-exports.updateExamById = async (req, res) => {
-  try {
-    const examId = req.params.id;
-    const {
-      year,
-      semester,
-      session,
-      subject: subjectId,            // ← rename
-      examNo,
-      questions,
-      assignedSemester,
-      duration,
-      scheduleDate,
-      scheduleTime,
-    } = req.body;
-
-    // Validation (same as createExam)...
-    if (!year || !semester || !session || !subjectId || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-
-    // Validate & authorize Subject (same as above)
-    const subjectDoc = await Subject.findById(subjectId).lean();
-    if (!subjectDoc) {
-      return res.status(404).json({ message: 'Subject not found' });
-    }
-    if (subjectDoc.teacher.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Not authorized to use this subject' });
-    }
-    if (subjectDoc.year.toString() !== year.toString()
-        || subjectDoc.session !== session.trim().toLowerCase()) {
-      return res.status(400).json({
-        message: 'Selected subject does not match the specified year or session'
-      });
-    }
-
-    // Update the Exam
-    const updatedExam = await Exam.findByIdAndUpdate(
-      examId,
-      {
-        year,
-        semester,
-        session,
-        subject: subjectId,
-        assignedStudents: subjectDoc.students,   // ← UPDATE HERE
-        examNo,
-        questions,
-        assignedSemester,
-        duration,
-        scheduleDate: new Date(scheduleDate),
-        scheduleTime,
-      },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedExam) {
-      return res.status(404).json({ message: 'Exam not found' });
-    }
-    res.json({ message: 'Exam updated successfully', exam: updatedExam });
-  } catch (err) {
-    console.error('updateExamById error:', err);
-    res.status(500).json({ message: 'Server error updating exam' });
-  }
-};
-
-
-
-
-// exports.createExam = async (req, res) => {
-//   try {
-//     const {
-//       year,
-//       semester,
-//       session,         // renamed
-//       subject,
-//       examNo,
-//       questions,
-//       assignedSemester,
-//       duration,
-//       scheduleDate,
-//       scheduleTime,
-//     } = req.body;
-
-//     if (!year || !semester || !session || !subject || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
-//       return res.status(400).json({ message: 'Missing required fields' });
-//     }
-
-//     if (typeof duration !== 'number' || duration <= 0) {
-//       return res.status(400).json({ message: 'Duration must be a positive number' });
-//     }
-
-//     const newExam = new Exam({
-//       year,
-//       semester,
-//       session,         // renamed
-//       subject,
-//       examNo,
-//       questions,
-//       assignedSemester,
-//       duration,
-//       scheduleDate: new Date(scheduleDate),
-//       scheduleTime,
-//       createdBy: req.user.id,
-//     });
-
-//     await newExam.save();
-//     return res.status(201).json({ message: 'Exam created successfully', exam: newExam });
-//   } catch (err) {
-//     console.error('CreateExam error:', err);
-//     return res.status(500).json({ message: err.message || 'Server error' });
-//   }
-// };
-
+/**
+ * POST /api/exams/upload
+ */
 exports.uploadFile = (req, res, next) => {
-  upload.single('file')(req, res, async (err) => {
+  upload.single('file')(req, res, async err => {
     if (err) {
       return res.status(400).json({ message: 'File upload error', error: err.message });
     }
@@ -245,28 +90,98 @@ exports.uploadFile = (req, res, next) => {
       }
       return res.json({ questions });
     } catch (error) {
-      console.error(error);
+      console.error('uploadFile error:', error);
       return res.status(500).json({ message: 'Error processing file' });
     }
   });
 };
 
+/**
+ * POST /api/exams/create
+ */
+exports.createExam = async (req, res) => {
+  try {
+    const {
+      year,
+      semester,
+      session,
+      subject: subjectId,
+      examNo: rawExamNo,
+      questions,
+      assignedSemester,
+      duration,
+      scheduleDate,
+      scheduleTime,
+    } = req.body;
+
+    // Normalize examNo
+    const examNo = normalizeExamNo(rawExamNo);
+
+    // Validate
+    if (!year || !semester || !session || !subjectId || !examNo ||
+        !questions || !duration || !scheduleDate || !scheduleTime) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+    if (typeof duration !== 'number' || duration <= 0) {
+      return res.status(400).json({ message: 'Duration must be a positive number' });
+    }
+
+    // Check Subject
+    const subjectDoc = await Subject.findById(subjectId).lean();
+    if (!subjectDoc) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+    if (subjectDoc.teacher.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to use this subject' });
+    }
+    if (
+      subjectDoc.year.toString() !== year.toString() ||
+      subjectDoc.session !== session.trim().toLowerCase()
+    ) {
+      return res.status(400).json({
+        message: 'Selected subject does not match the specified year or session'
+      });
+    }
+
+    // Create exam
+    const newExam = new Exam({
+      year,
+      semester,
+      session,
+      subject: subjectId,
+      assignedStudents: subjectDoc.students,
+      examNo,
+      questions,
+      assignedSemester,
+      duration,
+      scheduleDate: new Date(scheduleDate),
+      scheduleTime,
+      createdBy: req.user.id,
+    });
+
+    await newExam.save();
+    res.status(201).json({ message: 'Exam created successfully', exam: newExam });
+  } catch (err) {
+    console.error('createExam error:', err);
+    res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+/**
+ * GET /api/exams/grouped
+ */
 exports.getGroupedExams = async (req, res) => {
   try {
-    const exams = await Exam.find().lean();
+    const exams = await Exam.find()
+      .populate('subject', 'name')
+      .lean();
+
     const grouped = {};
-
     exams.forEach(exam => {
-      const key = `${exam.year}-${exam.session}`;  // renamed
-
+      const key = `${exam.year}-${exam.session}`;
       if (!grouped[key]) {
-        grouped[key] = {
-          year: exam.year,
-          session: exam.session,                   // renamed
-          semesters: {}
-        };
+        grouped[key] = { year: exam.year, session: exam.session, semesters: {} };
       }
-
       if (!grouped[key].semesters[exam.assignedSemester]) {
         grouped[key].semesters[exam.assignedSemester] = [];
       }
@@ -275,34 +190,14 @@ exports.getGroupedExams = async (req, res) => {
 
     res.json(Object.values(grouped));
   } catch (err) {
-    console.error(err);
+    console.error('getGroupedExams error:', err);
     res.status(500).json({ message: 'Server error fetching grouped exams' });
   }
 };
 
-// exports.getExamsByFilter = async (req, res) => {
-//   try {
-//     const { year, session, semester } = req.query;  // renamed
-
-//     if (!year || !session || !semester) {
-//       return res.status(400).json({ message: 'Missing filter parameters' });
-//     }
-
-//     const exams = await Exam.find({
-//       year,
-//       session,   // renamed
-//       semester
-//     }).lean();
-
-//     res.json(exams);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: 'Server error fetching exams by filter' });
-//   }
-// };
-
-
-// File: controllers/examController.js
+/**
+ * GET /api/exams/filtered
+ */
 exports.getExamsByFilter = async (req, res) => {
   try {
     const { year, session, semester } = req.query;
@@ -310,105 +205,115 @@ exports.getExamsByFilter = async (req, res) => {
       return res.status(400).json({ message: 'Missing filter parameters' });
     }
 
-    // ← ADD .populate('subject','name') HERE
-    const exams = await Exam.find({
-      year,
-      session,
-      semester
-    })
-    .populate('subject', 'name')   // populate only the name field
-    .lean();
+    let exams = await Exam.find({ year, session, semester })
+      .populate('subject', 'name')
+      .lean();
+
+    // Normalize examNo
+    exams = exams.map(exam => ({ ...exam, examNo: normalizeExamNo(exam.examNo) }));
 
     res.json(exams);
   } catch (err) {
-    console.error(err);
+    console.error('getExamsByFilter error:', err);
     res.status(500).json({ message: 'Server error fetching exams by filter' });
   }
 };
 
-
+/**
+ * GET /api/exams/:id
+ */
 exports.getExamById = async (req, res) => {
   try {
-    const exam = await Exam.findById(req.params.id).lean();
-    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+    let exam = await Exam.findById(req.params.id)
+      .populate('subject', 'name')
+      .lean();
+    if (!exam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+    exam.examNo = normalizeExamNo(exam.examNo);
     res.json(exam);
   } catch (err) {
-    console.error(err);
+    console.error('getExamById error:', err);
     res.status(500).json({ message: 'Server error fetching exam' });
   }
 };
 
-// exports.updateExamById = async (req, res) => {
-//   try {
-//     const examId = req.params.id;
-//     const {
-//       year,
-//       semester,
-//       session,  // renamed
-//       subject,
-//       examNo,
-//       questions,
-//       assignedSemester,
-//       duration,
-//       scheduleDate,
-//       scheduleTime,
-//     } = req.body;
-
-//     if (!year || !semester || !session || !subject || !examNo || !questions || !duration || !scheduleDate || !scheduleTime) {
-//       return res.status(400).json({ message: 'Missing required fields' });
-//     }
-
-//     const updatedExam = await Exam.findByIdAndUpdate(
-//       examId,
-//       {
-//         year,
-//         semester,
-//         session,        // renamed
-//         subject,
-//         examNo,
-//         questions,
-//         assignedSemester,
-//         duration,
-//         scheduleDate: new Date(scheduleDate),
-//         scheduleTime,
-//       },
-//       { new: true, runValidators: true }
-//     );
-
-//     if (!updatedExam) {
-//       return res.status(404).json({ message: 'Exam not found' });
-//     }
-//     res.json({ message: 'Exam updated successfully', exam: updatedExam });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: 'Server error updating exam' });
-//   }
-// };
-
-// Add at the bottom of controllers/examController.js:
-
-// GET /api/exams/recent
-exports.getRecentExams = async (req, res) => {
+/**
+ * PUT /api/exams/:id
+ */
+exports.updateExamById = async (req, res) => {
   try {
-    // Fetch the 5 most recent exams by scheduleDate descending
-    const exams = await Exam.find()
-      .sort({ scheduleDate: -1 })
-      .limit(5)
-      .populate('subject','name')
-      .lean();
+    const examId = req.params.id;
+    const {
+      year,
+      semester,
+      session,
+      subject: subjectId,
+      examNo: rawExamNo,
+      questions,
+      assignedSemester,
+      duration,
+      scheduleDate,
+      scheduleTime,
+    } = req.body;
 
-    res.json(exams);
+    const examNo = normalizeExamNo(rawExamNo);
+
+    if (!year || !semester || !session || !subjectId || !examNo ||
+        !questions || !duration || !scheduleDate || !scheduleTime) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const subjectDoc = await Subject.findById(subjectId).lean();
+    if (!subjectDoc) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+    if (subjectDoc.teacher.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to use this subject' });
+    }
+    if (
+      subjectDoc.year.toString() !== year.toString() ||
+      subjectDoc.session !== session.trim().toLowerCase()
+    ) {
+      return res.status(400).json({
+        message: 'Selected subject does not match the specified year or session'
+      });
+    }
+
+    let updatedExam = await Exam.findByIdAndUpdate(
+      examId,
+      {
+        year,
+        semester,
+        session,
+        subject: subjectId,
+        assignedStudents: subjectDoc.students,
+        examNo,
+        questions,
+        assignedSemester,
+        duration,
+        scheduleDate: new Date(scheduleDate),
+        scheduleTime,
+      },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedExam) {
+      return res.status(404).json({ message: 'Exam not found' });
+    }
+    updatedExam = await updatedExam.populate('subject', 'name');
+    res.json({ message: 'Exam updated successfully', exam: updatedExam });
   } catch (err) {
-    console.error('GetRecentExams error:', err);
-    res.status(500).json({ message: 'Server error' });
+    console.error('updateExamById error:', err);
+    res.status(500).json({ message: 'Server error updating exam' });
   }
 };
 
-
-// DELETE /api/exams/:id
+/**
+ * DELETE /api/exams/:id
+ */
 exports.deleteExamById = async (req, res) => {
   try {
-    // only allow teacher who created it to delete
     const deleted = await Exam.findOneAndDelete({
       _id: req.params.id,
       createdBy: req.user.id
@@ -422,5 +327,24 @@ exports.deleteExamById = async (req, res) => {
   } catch (err) {
     console.error('deleteExamById error:', err);
     res.status(500).json({ message: 'Server error deleting exam' });
+  }
+};
+
+/**
+ * GET /api/exams/recent
+ */
+exports.getRecentExams = async (req, res) => {
+  try {
+    let exams = await Exam.find()
+      .sort({ scheduleDate: -1 })
+      .limit(5)
+      .populate('subject', 'name')
+      .lean();
+
+    exams = exams.map(exam => ({ ...exam, examNo: normalizeExamNo(exam.examNo) }));
+    res.json(exams);
+  } catch (err) {
+    console.error('getRecentExams error:', err);
+    res.status(500).json({ message: 'Server error fetching recent exams' });
   }
 };

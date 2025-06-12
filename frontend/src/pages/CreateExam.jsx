@@ -1,311 +1,3 @@
-// // src/pages/CreateExam.jsx
-// import React, { useState, useRef } from 'react';
-// import Sidebar from '../components/TSidebar';
-// import Header from '../components/THeader';
-
-// export default function CreateExam() {
-//   const [sidebarOpen, setSidebarOpen] = useState(false);
-//   const toggleSidebar = () => setSidebarOpen(o => !o);
-
-//   const [form, setForm] = useState({
-//     year: '',
-//     semester: '',
-//     session: '',
-//     subject: '',
-//     examNo: '',
-//     duration: '',
-//     scheduleDate: '',
-//     scheduleTime: '',
-//   });
-//   const [questions, setQuestions] = useState([
-//     { questionText: '', options: ['', '', '', ''], correctAnswerIndex: null }
-//   ]);
-//   const fileInputRef = useRef(null);
-
-//   const handleFormChange = (e) =>
-//     setForm({ ...form, [e.target.name]: e.target.value });
-
-//   const addQuestion = () =>
-//     setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctAnswerIndex: null }]);
-
-//   const deleteQuestion = (idx) =>
-//     setQuestions(questions.filter((_, i) => i !== idx));
-
-//   const handleQuestionChange = (idx, field, val, optIdx = null) => {
-//     const newQs = [...questions];
-//     if (field === 'questionText') newQs[idx].questionText = val;
-//     else if (field === 'option') newQs[idx].options[optIdx] = val;
-//     else if (field === 'correctAnswerIndex') newQs[idx].correctAnswerIndex = Number(val);
-//     setQuestions(newQs);
-//   };
-
-//   const handleFileUploadClick = () => fileInputRef.current.click();
-//   const handleFileUpload = async (e) => {
-//     const file = e.target.files[0];
-//     if (!file) return;
-//     const fd = new FormData(); fd.append('file', file);
-//     try {
-//       const token = localStorage.getItem('token');
-//       const res = await fetch('/api/exams/upload', {
-//         method: 'POST',
-//         body: fd,
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-//       const data = await res.json();
-//       if (data.questions) {
-//         setQuestions(data.questions.map(q => ({
-//           questionText: q.questionText,
-//           options: q.options,
-//           correctAnswerIndex: q.correctAnswerIndex,
-//         })));
-//       }
-//     } catch {
-//       alert('Failed to upload file');
-//     }
-//   };
-
-//   const handleSubmit = async (e) => {
-//     e.preventDefault();
-//     const payload = {
-//       ...form,
-//       duration: Number(form.duration),
-//       assignedSemester: `${form.session} ${form.year}`,
-//       questions,
-//     };
-//     try {
-//       const token = localStorage.getItem('token');
-//       const res = await fetch('/api/exams/create', {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//           Authorization: `Bearer ${token}`
-//         },
-//         body: JSON.stringify(payload)
-//       });
-//       const data = await res.json();
-//       if (res.ok) {
-//         alert('Exam created successfully');
-//         setForm({
-//           year: '',
-//           semester: '',
-//           session: '',
-//           subject: '',
-//           examNo: '',
-//           duration: '',
-//           scheduleDate: '',
-//           scheduleTime: '',
-//         });
-//         setQuestions([{ questionText: '', options: ['', '', '', ''], correctAnswerIndex: null }]);
-//       } else {
-//         alert('Error: ' + data.message);
-//       }
-//     } catch {
-//       alert('Server error');
-//     }
-//   };
-
-//   return (
-//     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-//       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-//       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-//         <Header toggleSidebar={toggleSidebar} />
-
-//         <form onSubmit={handleSubmit} className="px-2 md:px-4 lg:px-16 py-4 md:py-8 space-y-6">
-//           <h1 className="text-[22px] md:text-4xl font-bold text-[#002855]">Create Exam</h1>
-
-//           {/* Tighter grid for main exam fields */}
-//           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-//             {/* Year */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Year</label>
-//               <input
-//                 type="text" name="year" placeholder="e.g. 2025"
-//                 value={form.year} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-
-//             {/* Semester */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Semester</label>
-//               <input
-//                 type="text" name="semester" placeholder="e.g. 6"
-//                 value={form.semester} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-
-//             {/* Session */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Session</label>
-//               <input
-//                 type="text" name="session" placeholder="Fall / Spring"
-//                 value={form.session} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-
-//             {/* Subject */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Subject</label>
-//               <input
-//                 type="text" name="subject" placeholder="e.g. Data Structures"
-//                 value={form.subject} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-
-//             {/* Exam Number */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Exam Number</label>
-//               <input
-//                 type="text" name="examNo" placeholder="e.g. Quiz 01"
-//                 value={form.examNo} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-
-//             {/* Duration */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Duration (minutes)</label>
-//               <input
-//                 type="number" name="duration" min={1}
-//                 value={form.duration} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-
-//             {/* Schedule Date */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Schedule Date</label>
-//               <input
-//                 type="date" name="scheduleDate"
-//                 value={form.scheduleDate} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-
-//             {/* Schedule Time */}
-//             <div>
-//               <label className="block mb-1 font-medium text-[#002855]">Schedule Time</label>
-//               <input
-//                 type="time" name="scheduleTime"
-//                 value={form.scheduleTime} onChange={handleFormChange}
-//                 className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                 required
-//               />
-//             </div>
-//           </div>
-
-//           {/* Upload Questions File */}
-//           <div className="flex items-center gap-4">
-//             <button
-//               type="button" onClick={handleFileUploadClick}
-//               className="bg-[#002855] text-white px-4 py-2 rounded-lg hover:bg-[#001f47] transition"
-//             >
-//               Upload Questions File
-//             </button>
-//             <input
-//               type="file" accept=".pdf,.doc,.docx"
-//               ref={fileInputRef} onChange={handleFileUpload}
-//               className="hidden"
-//             />
-//           </div>
-
-//           {/* Questions */}
-//           <div className="bg-white rounded-xl shadow-md p-4 space-y-6">
-//             {questions.map((q, idx) => (
-//               <div key={idx} className="border p-4 rounded-md space-y-3 relative">
-//                 <button
-//                   type="button"
-//                   onClick={() => deleteQuestion(idx)}
-//                   className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold hover:bg-red-800 transition"
-//                   title="Delete Question"
-//                 >
-//                   ×
-//                 </button>
-//                 <label className="block mb-1 font-medium text-[#002855]">
-//                   Question {idx + 1}
-//                 </label>
-//                 <input
-//                   type="text" placeholder="Enter question text"
-//                   value={q.questionText}
-//                   onChange={e => handleQuestionChange(idx, 'questionText', e.target.value)}
-//                   className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                   required
-//                 />
-//                 {q.options.map((opt, i) => (
-//                   <input
-//                     key={i}
-//                     type="text"
-//                     placeholder={`Option ${i + 1}`}
-//                     value={opt}
-//                     onChange={e => handleQuestionChange(idx, 'option', e.target.value, i)}
-//                     className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                     required
-//                   />
-//                 ))}
-//                 <label className="block mb-1 font-medium text-[#002855]">Correct Option</label>
-//                 <select
-//                   value={q.correctAnswerIndex ?? ''}
-//                   onChange={e => handleQuestionChange(idx, 'correctAnswerIndex', e.target.value)}
-//                   className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-//                   required
-//                 >
-//                   <option value="" disabled>Select Correct Option</option>
-//                   {q.options.map((_, i) => (
-//                     <option key={i} value={i}>Option {i + 1}</option>
-//                   ))}
-//                 </select>
-//               </div>
-//             ))}
-//             <button
-//               type="button" onClick={addQuestion}
-//               className="text-[#0073E6] font-medium text-lg"
-//             >
-//               + Add Question
-//             </button>
-//           </div>
-
-//           {/* Submit */}
-//           <div className="flex justify-end">
-//             <button
-//               type="submit"
-//               className="bg-[#002855] text-white px-6 py-2 rounded-lg hover:bg-[#001f47] transition"
-//             >
-//               Submit Exam
-//             </button>
-//           </div>
-//         </form>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // File: src/pages/CreateExam.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -316,93 +8,98 @@ export default function CreateExam() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const toggleSidebar = () => setSidebarOpen(o => !o);
 
+  const [subjects, setSubjects] = useState([]);
   const [form, setForm] = useState({
     year: '',
-    semester: '',
-    session: '',
     subject: '',
+    session: '',
+    semester: '',
     examNo: '',
     duration: '',
     scheduleDate: '',
     scheduleTime: '',
   });
-
-  const [subjects, setSubjects] = useState([]);   // ← list of subjects fetched
-  const fileInputRef = useRef(null);
-
-  // Fetch subjects whenever year or session changes
-  useEffect(() => {
-    async function fetchSubjects() {
-      const { year, session } = form;
-      if (year && session) {
-        try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(
-            `/api/subjects?year=${year}&session=${session}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            setSubjects(data);
-          } else {
-            setSubjects([]);
-          }
-        } catch {
-          setSubjects([]);
-        }
-      } else {
-        setSubjects([]);
-      }
-      // Reset selected subject whenever list changes
-      setForm(f => ({ ...f, subject: '' }));
-    }
-    fetchSubjects();
-  }, [form.year, form.session]);
-
-  const handleFormChange = e =>
-    setForm({ ...form, [e.target.name]: e.target.value });
-
   const [questions, setQuestions] = useState([
     { questionText: '', options: ['', '', '', ''], correctAnswerIndex: null }
   ]);
+  const fileInputRef = useRef(null);
 
-  const addQuestion = () =>
-    setQuestions([...questions, { questionText: '', options: ['', '', '', ''], correctAnswerIndex: null }]);
-
-  const deleteQuestion = idx =>
-    setQuestions(questions.filter((_, i) => i !== idx));
-
-  const handleQuestionChange = (idx, field, val, optIdx = null) => {
-    const newQs = [...questions];
-    if (field === 'questionText') {
-      newQs[idx].questionText = val;
-    } else if (field === 'option') {
-      newQs[idx].options[optIdx] = val;
-    } else if (field === 'correctAnswerIndex') {
-      newQs[idx].correctAnswerIndex = Number(val);
+  // 1) Whenever year changes, fetch that year’s subjects
+  useEffect(() => {
+    async function fetchSubjects() {
+      if (!form.year) {
+        setSubjects([]);
+        setForm(f => ({ ...f, subject: '', session: '', semester: '' }));
+        return;
+      }
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`/api/subjects?year=${form.year}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error();
+        setSubjects(await res.json());
+        // clear any previous subject selections
+        setForm(f => ({ ...f, subject: '', session: '', semester: '' }));
+      } catch {
+        setSubjects([]);
+      }
     }
-    setQuestions(newQs);
+    fetchSubjects();
+  }, [form.year]);
+
+  // 2) Handle form inputs
+  const handleFormChange = e => {
+    const { name, value } = e.target;
+    if (name === 'subject') {
+      const sel = subjects.find(s => s._id === value);
+      if (sel) {
+        setForm(f => ({
+          ...f,
+          subject:  sel._id,
+          session:  sel.session,
+          semester: sel.semester.toString()
+        }));
+      } else {
+        setForm(f => ({ ...f, subject:'', session:'', semester:'' }));
+      }
+    } else {
+      setForm(f => ({ ...f, [name]: value }));
+    }
   };
 
+  // Question handlers (unchanged) …
+  const addQuestion = () =>
+    setQuestions(qs => [...qs, { questionText:'', options:['','','',''], correctAnswerIndex:null }]);
+  const deleteQuestion = idx =>
+    setQuestions(qs => qs.filter((_,i) => i!==idx));
+  const handleQuestionChange = (idx, field, val, optIdx=null) =>
+    setQuestions(qs => {
+      const a = [...qs];
+      if (field==='questionText') a[idx].questionText = val;
+      if (field==='option')       a[idx].options[optIdx] = val;
+      if (field==='correctAnswerIndex') a[idx].correctAnswerIndex = Number(val);
+      return a;
+    });
+
+  // File upload (unchanged) …
   const handleFileUploadClick = () => fileInputRef.current.click();
   const handleFileUpload = async e => {
     const file = e.target.files[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
+    const fd = new FormData(); fd.append('file', file);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/exams/upload', {
-        method: 'POST',
-        body: fd,
-        headers: { Authorization: `Bearer ${token}` }
+        method:'POST', body:fd,
+        headers:{ Authorization:`Bearer ${token}` }
       });
       const data = await res.json();
       if (data.questions) {
-        setQuestions(data.questions.map(q => ({
+        setQuestions(data.questions.map(q=>({
           questionText: q.questionText,
-          options: q.options,
-          correctAnswerIndex: q.correctAnswerIndex,
+          options:      q.options,
+          correctAnswerIndex: q.correctAnswerIndex
         })));
       }
     } catch {
@@ -410,21 +107,22 @@ export default function CreateExam() {
     }
   };
 
+  // Submit (unchanged) …
   const handleSubmit = async e => {
     e.preventDefault();
     const payload = {
       ...form,
-      duration: Number(form.duration),
       assignedSemester: `${form.session} ${form.year}`,
-      questions,
+      duration: Number(form.duration),
+      questions
     };
     try {
       const token = localStorage.getItem('token');
       const res = await fetch('/api/exams/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          Authorization:`Bearer ${token}`
         },
         body: JSON.stringify(payload)
       });
@@ -432,18 +130,12 @@ export default function CreateExam() {
       if (res.ok) {
         alert('Exam created successfully');
         setForm({
-          year: '',
-          semester: '',
-          session: '',
-          subject: '',
-          examNo: '',
-          duration: '',
-          scheduleDate: '',
-          scheduleTime: '',
+          year:'', subject:'', session:'', semester:'',
+          examNo:'', duration:'', scheduleDate:'', scheduleTime:''
         });
-        setQuestions([{ questionText: '', options: ['', '', '', ''], correctAnswerIndex: null }]);
+        setQuestions([{ questionText:'', options:['','','',''], correctAnswerIndex:null }]);
       } else {
-        alert('Error: ' + data.message);
+        alert('Error: '+data.message);
       }
     } catch {
       alert('Server error');
@@ -452,133 +144,113 @@ export default function CreateExam() {
 
   return (
     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar}/>
       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-        <Header toggleSidebar={toggleSidebar} />
+        <Header toggleSidebar={toggleSidebar}/>
 
-        <form onSubmit={handleSubmit} className="px-2 md:px-4 lg:px-16 py-4 md:py-8 space-y-6">
-          <h1 className="text-[22px] md:text-4xl font-bold text-[#002855]">Create Exam</h1>
+        <form onSubmit={handleSubmit} className="px-4 md:px-8 lg:px-16 py-6 space-y-6">
+          <h1 className="text-3xl font-bold text-[#002855]">Create Exam</h1>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {/* Year */}
+          {/* Year first */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Year</label>
               <input
-                type="text"
-                name="year"
-                placeholder="e.g. 2025"
+                name="year" type="text"
                 value={form.year}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                placeholder="e.g. 2025"
+                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
                 required
               />
             </div>
 
-            {/* Semester */}
-            <div>
-              <label className="block mb-1 font-medium text-[#002855]">Semester</label>
-              <input
-                type="text"
-                name="semester"
-                placeholder="e.g. 6"
-                value={form.semester}
-                onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-                required
-              />
-            </div>
-
-            {/* Session */}
-            <div>
-              <label className="block mb-1 font-medium text-[#002855]">Session</label>
-              <input
-                type="text"
-                name="session"
-                placeholder="Fall / Spring"
-                value={form.session}
-                onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-                required
-              />
-            </div>
-
-            {/* Subject (dropdown) */}
+            {/* Now subject filtered by year */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Subject</label>
               <select
                 name="subject"
                 value={form.subject}
                 onChange={handleFormChange}
-                disabled={!subjects.length}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
                 required
               >
                 <option value="">— Select Subject —</option>
-                {subjects.map(sub => (
-                  <option key={sub._id} value={sub._id}>
-                    {sub.name}
+                {subjects.map(s=>(
+                  <option key={s._id} value={s._id}>
+                    {s.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Exam Number */}
+            {/* Auto-filled session */}
+            <div>
+              <label className="block mb-1 font-medium text-[#002855]">Session</label>
+              <input
+                name="session"
+                value={form.session}
+                disabled
+                className="w-full bg-gray-100 border px-3 py-2 rounded-lg"
+              />
+            </div>
+
+            {/* Auto-filled semester */}
+            <div>
+              <label className="block mb-1 font-medium text-[#002855]">Semester</label>
+              <input
+                name="semester"
+                value={form.semester}
+                disabled
+                className="w-full bg-gray-100 border px-3 py-2 rounded-lg"
+              />
+            </div>
+
+            {/* The rest unchanged */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Exam Number</label>
               <input
-                type="text"
                 name="examNo"
-                placeholder="e.g. Quiz 01"
                 value={form.examNo}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
                 required
               />
             </div>
-
-            {/* Duration */}
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Duration (minutes)</label>
+              <label className="block mb-1 font-medium text-[#002855]">Duration (min)</label>
               <input
-                type="number"
-                name="duration"
-                min={1}
+                name="duration" type="number" min="1"
                 value={form.duration}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
                 required
               />
             </div>
-
-            {/* Schedule Date */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Schedule Date</label>
               <input
-                type="date"
-                name="scheduleDate"
+                name="scheduleDate" type="date"
                 value={form.scheduleDate}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
                 required
               />
             </div>
-
-            {/* Schedule Time */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Schedule Time</label>
               <input
-                type="time"
-                name="scheduleTime"
+                name="scheduleTime" type="time"
                 value={form.scheduleTime}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
                 required
               />
             </div>
           </div>
 
-          {/* Upload Questions File */}
-          <div className="flex items-center gap-4">
+          {/* File upload unchanged */}
+          <div className="flex items-center space-x-4">
             <button
               type="button"
               onClick={handleFileUploadClick}
@@ -595,58 +267,76 @@ export default function CreateExam() {
             />
           </div>
 
-          {/* Questions List */}
-          <div className="bg-white rounded-xl shadow-md p-4 space-y-6">
+          {/* Questions UI unchanged from last update */}
+          {/* Improved Questions UI */}
+          <div className="space-y-6">
             {questions.map((q, idx) => (
-              <div key={idx} className="border p-4 rounded-md space-y-3 relative">
+              <div key={idx} className="relative bg-white shadow-lg rounded-lg p-6">
+                {/* Badge */}
+                <div className="absolute -top-3 -left-3 bg-[#002855] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center">
+                  {idx + 1}
+                </div>
+
+                {/* Question Text */}
+                <div className="mt-6">
+                  <label className="block mb-1 font-semibold text-[#002855]">Question {idx + 1}</label>
+                  <textarea
+                    rows={2}
+                    value={q.questionText}
+                    onChange={e => handleQuestionChange(idx, 'questionText', e.target.value)}
+                    className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855] resize-none"
+                    placeholder="Enter question text"
+                    required
+                  />
+                </div>
+
+                {/* Options Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  {q.options.map((opt, i) => (
+                    <input
+                      key={i}
+                      type="text"
+                      placeholder={`Option ${i + 1}`}
+                      value={opt}
+                      onChange={e => handleQuestionChange(idx, 'option', e.target.value, i)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                      required
+                    />
+                  ))}
+                </div>
+
+                {/* Correct Answer */}
+                <div className="mt-4">
+                  <label className="block mb-1 font-medium text-[#002855]">Correct Answer</label>
+                  <select
+                    value={q.correctAnswerIndex ?? ''}
+                    onChange={e => handleQuestionChange(idx, 'correctAnswerIndex', e.target.value)}
+                    className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
+                    required
+                  >
+                    <option value="" disabled>Select correct option</option>
+                    {q.options.map((_, i) => (
+                      <option key={i} value={i}>Option {i + 1}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Delete */}
                 <button
                   type="button"
                   onClick={() => deleteQuestion(idx)}
-                  className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-7 h-7 flex items-center justify-center font-bold hover:bg-red-800 transition"
+                  className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-800 transition"
                   title="Delete Question"
                 >
                   ×
                 </button>
-                <label className="block mb-1 font-medium text-[#002855]">
-                  Question {idx + 1}
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter question text"
-                  value={q.questionText}
-                  onChange={e => handleQuestionChange(idx, 'questionText', e.target.value)}
-                  className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-                  required
-                />
-                {q.options.map((opt, i) => (
-                  <input
-                    key={i}
-                    type="text"
-                    placeholder={`Option ${i + 1}`}
-                    value={opt}
-                    onChange={e => handleQuestionChange(idx, 'option', e.target.value, i)}
-                    className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-                    required
-                  />
-                ))}
-                <label className="block mb-1 font-medium text-[#002855]">Correct Option</label>
-                <select
-                  value={q.correctAnswerIndex ?? ''}
-                  onChange={e => handleQuestionChange(idx, 'correctAnswerIndex', e.target.value)}
-                  className="w-full border px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#002855]"
-                  required
-                >
-                  <option value="" disabled>Select Correct Option</option>
-                  {q.options.map((_, i) => (
-                    <option key={i} value={i}>Option {i + 1}</option>
-                  ))}
-                </select>
               </div>
             ))}
+
             <button
               type="button"
               onClick={addQuestion}
-              className="text-[#0073E6] font-medium text-lg"
+              className="flex items-center text-[#0073E6] font-medium"
             >
               + Add Question
             </button>

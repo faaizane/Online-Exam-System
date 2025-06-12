@@ -3,32 +3,18 @@
 const Subject = require('../models/Subject');
 const User    = require('../models/User');
 
-// // GET /api/subjects
-// exports.getSubjects = async (req, res) => {
-//   try {
-//     let subs = await Subject.find({ teacher: req.user.id }).lean();
-//     subs = subs.map(sub => ({
-//       ...sub,
-//       year: sub.year || (sub.createdAt
-//         ? new Date(sub.createdAt).getFullYear()
-//         : new Date().getFullYear()
-//       )
-//     }));
-//     res.json(subs);
-//   } catch (err) {
-//     console.error('getSubjects error:', err);
-//     res.status(500).json({ message: 'Server error fetching subjects' });
-//   }
-// };
-
+// GET /api/subjects
 exports.getSubjects = async (req, res) => {
   try {
-    const { year, session } = req.query;
+    // Only this teacher’s subjects
     const filter = { teacher: req.user.id };
-    if (year)    filter.year    = parseInt(year, 10);
-    if (session) filter.session = session.trim().toLowerCase();
-
+    // If a year query param is provided, only fetch that year
+    if (req.query.year) {
+      filter.year = Number(req.query.year);
+    }
     let subs = await Subject.find(filter).lean();
+
+    // Fill in a fallback year if missing
     subs = subs.map(sub => ({
       ...sub,
       year: sub.year || (sub.createdAt
@@ -54,29 +40,6 @@ exports.getSubjectById = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching subject' });
   }
 };
-
-// POST /api/subjects
-// exports.createSubject = async (req, res) => {
-//   const { name, session, year, semester } = req.body;
-//   if (!name || !session || !year || !semester) {
-//     return res.status(400).json({ message: 'Missing required fields' });
-//   }
-//   try {
-//     const newSub = new Subject({
-//       name,
-//       session,
-//       year,
-//       semester,
-//       teacher: req.user.id,
-//       students: []
-//     });
-//     await newSub.save();
-//     res.status(201).json(newSub);
-//   } catch (err) {
-//     console.error('createSubject error:', err);
-//     res.status(500).json({ message: 'Server error creating subject' });
-//   }
-// };
 
 // In createSubject:
 exports.createSubject = async (req, res) => {

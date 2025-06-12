@@ -8,6 +8,11 @@ import axios from 'axios';
 
 export default function AddSubject() {
   const navigate = useNavigate();
+
+  // ← Sidebar toggle state
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const toggleSidebar = () => setSidebarOpen(o => !o);
+
   const [form, setForm] = useState({
     name: '',
     session: '',
@@ -17,7 +22,6 @@ export default function AddSubject() {
   const [error, setError] = useState('');
   const [subjects, setSubjects] = useState([]);
 
-  // Load existing subjects for duplicate check
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
@@ -81,9 +85,10 @@ export default function AddSubject() {
 
   return (
     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-      <Sidebar isOpen={false} toggleSidebar={() => {}} />
+      {/* ← pass real sidebarOpen & toggle */}
+      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-        <Header toggleSidebar={() => {}} />
+        <Header toggleSidebar={toggleSidebar} />
 
         <div className="px-4 md:px-16 py-6">
           <button

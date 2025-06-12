@@ -23,7 +23,7 @@ import GiveExam          from './pages/GiveExam';
 
 import TDashboard        from './pages/TDashboard';
 import StudentManagement from './pages/StudentManagement';
-import AddStudent        from './pages/AddStudent';
+// import AddStudent        from './pages/AddStudent';
 import ManageExams       from './pages/ManageExams';
 import CreateExam        from './pages/CreateExam';
 import EditExam          from './pages/EditExam';           // <-- Naya import
@@ -125,14 +125,14 @@ export default function App() {
             </PrivateRoute>
           }
         />
-        <Route
+        {/* <Route
           path="/add-student"
           element={
             <PrivateRoute allowedRoles={['teacher']}>
               <AddStudent />
             </PrivateRoute>
           }
-        />
+        /> */}
         <Route
           path="/manageexams"
           element={

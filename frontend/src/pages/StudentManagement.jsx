@@ -8,14 +8,17 @@ import axios from 'axios';
 
 export default function StudentManagement() {
   const navigate = useNavigate();
+
+  // ← Sidebar toggle state added
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const toggleSidebar = () => setSidebarOpen(o => !o);
+
   const [subjects, setSubjects] = useState([]);
   const [error, setError] = useState('');
 
-  // Capitalize helper
   const capitalize = str =>
     !str ? '' : str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
-  // Ordinal helper
   const ordinal = val => {
     const num = parseInt(val, 10);
     if (isNaN(num)) return val;
@@ -47,10 +50,8 @@ export default function StudentManagement() {
       });
   }, []);
 
-  // Group by year & normalized-session
   const groups = subjects.reduce((acc, sub) => {
     const year = sub.year;
-    // normalize session to lowercase + trim
     const sessionNorm = sub.session.trim().toLowerCase();
     const key = year != null
       ? `${year}—${sessionNorm}`
@@ -66,7 +67,6 @@ export default function StudentManagement() {
     return acc;
   }, {});
 
-  // Sort: year desc, then session alphabetically
   const sortedGroups = Object.values(groups).sort((a, b) => {
     if (a.year == null && b.year != null) return 1;
     if (b.year == null && a.year != null) return -1;
@@ -78,9 +78,10 @@ export default function StudentManagement() {
 
   return (
     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-      <Sidebar isOpen={false} toggleSidebar={() => {}} />
+      {/* Pass real state & toggle */}
+      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-        <Header toggleSidebar={() => {}} />
+        <Header toggleSidebar={toggleSidebar} />
 
         <div className="px-4 md:px-16 py-6">
           <div className="flex justify-between items-center mb-6">
@@ -99,7 +100,6 @@ export default function StudentManagement() {
 
           {sortedGroups.map(({ year, session, items }) => (
             <div key={`${year ?? 'noYear'}—${session}`} className="mb-8">
-              {/* Display with capitalized session */}
               <h2 className="text-2xl font-semibold text-[#002855] mb-4">
                 {year != null
                   ? `${year} — ${capitalize(session)}`
