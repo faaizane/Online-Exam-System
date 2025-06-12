@@ -23,4 +23,13 @@ router.get(
 router.get('/:id', protect, authorize('teacher'), examController.getExamById);
 router.put('/:id', protect, authorize('teacher'), examController.updateExamById);
 
+// DELETE /api/exams/:id
+router.delete(
+  '/:id',
+  protect,
+  authorize('teacher'),
+  examController.deleteExamById
+);
+
+
 module.exports = router;

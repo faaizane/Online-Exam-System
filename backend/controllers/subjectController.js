@@ -3,10 +3,32 @@
 const Subject = require('../models/Subject');
 const User    = require('../models/User');
 
-// GET /api/subjects
+// // GET /api/subjects
+// exports.getSubjects = async (req, res) => {
+//   try {
+//     let subs = await Subject.find({ teacher: req.user.id }).lean();
+//     subs = subs.map(sub => ({
+//       ...sub,
+//       year: sub.year || (sub.createdAt
+//         ? new Date(sub.createdAt).getFullYear()
+//         : new Date().getFullYear()
+//       )
+//     }));
+//     res.json(subs);
+//   } catch (err) {
+//     console.error('getSubjects error:', err);
+//     res.status(500).json({ message: 'Server error fetching subjects' });
+//   }
+// };
+
 exports.getSubjects = async (req, res) => {
   try {
-    let subs = await Subject.find({ teacher: req.user.id }).lean();
+    const { year, session } = req.query;
+    const filter = { teacher: req.user.id };
+    if (year)    filter.year    = parseInt(year, 10);
+    if (session) filter.session = session.trim().toLowerCase();
+
+    let subs = await Subject.find(filter).lean();
     subs = subs.map(sub => ({
       ...sub,
       year: sub.year || (sub.createdAt
