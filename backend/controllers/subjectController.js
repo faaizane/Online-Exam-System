@@ -195,3 +195,60 @@ exports.removeStudentFromSubject = async (req, res) => {
     res.status(500).json({ message: 'Server error removing student' });
   }
 };
+
+// … your existing requires and exports …
+
+// PUT /api/subjects/:id
+exports.updateSubject = async (req, res) => {
+  const { name, session, year, semester } = req.body;
+  if (!name || !session || !year || !semester) {
+    return res.status(400).json({ message: 'Missing required fields' });
+  }
+
+  try {
+    const sub = await Subject.findById(req.params.id);
+    if (!sub) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+    // (optional) enforce that only the owner can update:
+    if (sub.teacher.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    sub.name     = name.trim();
+    sub.session  = session.trim().toLowerCase();
+    sub.year     = year;
+    sub.semester = semester;
+    await sub.save();
+
+    res.json(sub);
+  } catch (err) {
+    // handle unique‐index violation
+    if (err.code === 11000) {
+      return res.status(400).json({ message: 'This subject already exists.' });
+    }
+    console.error('updateSubject error:', err);
+    res.status(500).json({ message: 'Server error updating subject' });
+  }
+};
+
+// DELETE /api/subjects/:id
+exports.deleteSubject = async (req, res) => {
+  try {
+    // find and delete in one operation, scoping to this teacher
+    const sub = await Subject.findOneAndDelete({
+      _id: req.params.id,
+      teacher: req.user.id
+    });
+    if (!sub) {
+      return res
+        .status(404)
+        .json({ message: 'Subject not found or you are not authorized' });
+    }
+    return res.json({ message: 'Subject deleted' });
+  } catch (err) {
+    console.error('deleteSubject error:', err);
+    return res.status(500).json({ message: 'Server error deleting subject' });
+  }
+};
+

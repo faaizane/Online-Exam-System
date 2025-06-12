@@ -53,6 +53,22 @@ router.post(
   subjectController.bulkAddStudents
 );
 
+// UPDATE a subject
+router.put(
+  '/:id',
+  protect,
+  authorize('teacher'),
+  subjectController.updateSubject
+);
+
+// DELETE a subject
+router.delete(
+  '/:id',
+  protect,
+  authorize('teacher'),
+  subjectController.deleteSubject
+);
+
 // DELETE a student from a subject
 router.delete(
   '/:id/students/:studentId',
@@ -60,5 +76,8 @@ router.delete(
   authorize('teacher'),
   subjectController.removeStudentFromSubject
 );
+
+
+
 
 module.exports = router;
