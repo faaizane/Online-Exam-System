@@ -100,7 +100,7 @@ export default function App() {
           }
         />
         <Route
-          path="/give-exam"
+          path="/give-exam/:id"
           element={
             <PrivateRoute allowedRoles={['student']}>
               <GiveExam />

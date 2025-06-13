@@ -66,4 +66,21 @@ router.delete(
   examController.deleteExamById
 );
 
+// Student submits their answers
+router.post(
+  '/:id/submit',
+  protect,
+  authorize('student'),
+  examController.submitExam
+);
+
+// Student fetch their exam details by id
+router.get(
+  '/:id/student',
+  protect,
+  authorize('student'),
+  examController.getExamForStudent
+);
+
+
 module.exports = router;

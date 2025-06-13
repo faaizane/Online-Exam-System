@@ -1,38 +1,61 @@
-// src/pages/TestPage.jsx
-import React, { useEffect, useState } from 'react';
+// File: src/pages/TestPage.jsx
+import React, { useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
 import SHeader from '../components/SHeader';
 
+/** Convert 1 → "1st", 2 → "2nd", 3 → "3rd", 4 → "4th", etc. */
+function toOrdinal(n) {
+  const num = Number(n);
+  const rem100 = num % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${num}th`;
+  switch (num % 10) {
+    case 1: return `${num}st`;
+    case 2: return `${num}nd`;
+    case 3: return `${num}rd`;
+    default: return `${num}th`;
+  }
+}
+
+
 export default function TestPage() {
-  const location = useLocation();
+  const { state } = useLocation();
   const navigate = useNavigate();
-  const [currentDate, setCurrentDate] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const toggleSidebar = () => setSidebarOpen(o => !o);
+  const exam = state?.exam;
 
   useEffect(() => {
-    setCurrentDate(new Date().toLocaleDateString());
-  }, []);
+    if (!exam) navigate(-1);
+  }, [exam, navigate]);
 
-  const subject = location.state?.subject || 'Mobile App Development';
-  const semester = '2024 – Fall Semester';
+  // combine date + time into one Date
+  const dateTime = useMemo(() => {
+    if (!exam) return null;
+    const dt = new Date(exam.scheduleDate);
+    const [h, m] = exam.scheduleTime.split(':').map(Number);
+    dt.setHours(h, m);
+    return dt;
+  }, [exam]);
 
-  // single exam record
-  const exam = {
-    subject,
-    examNo: '1',
-    semester,
-    duration: '10 minutes',
-    date: currentDate,
-  };
+  const examDate = dateTime?.toLocaleDateString();
+  const examTime = dateTime?.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
 
+  const status = useMemo(() => {
+    if (!dateTime) return '';
+    const now = new Date();
+    if (dateTime.toDateString() === now.toDateString()) return 'Ongoing';
+    return dateTime > now ? 'Scheduled' : 'Completed';
+  }, [dateTime]);
+
+  if (!exam) return null;
   return (
     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-
+      <Sidebar isOpen={false} toggleSidebar={() => {}} />
       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-        <SHeader toggleSidebar={toggleSidebar} />
+        <SHeader toggleSidebar={() => {}} />
 
         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">
           {/* Header + Back */}
@@ -49,42 +72,25 @@ export default function TestPage() {
             </button>
           </div>
 
-          {/* Exam Details */}
           <h2 className="text-[22px] md:text-2xl font-semibold text-[#002855] mb-4">
             Exam Details
           </h2>
 
           {/* Mobile Card */}
           <div className="space-y-4 [@media(min-width:486px)]:hidden">
-            <div className="bg-white rounded-xl shadow-md p-4 divide-y divide-gray-200">
-              <div className="flex justify-between py-2">
-                <span className="font-semibold text-[#002855]">Subject Name:</span>
-                <span>{exam.subject}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="font-semibold text-[#002855]">Exam No.:</span>
-                <span>{exam.examNo}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="font-semibold text-[#002855]">Semester:</span>
-                <span>{exam.semester}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="font-semibold text-[#002855]">Total Time:</span>
-                <span>{exam.duration}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="font-semibold text-[#002855]">Date:</span>
-                <span>{exam.date}</span>
-              </div>
-              <div className="text-right pt-2">
-                <button
-                  onClick={() => navigate('/give-exam')}
-                  className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition"
-                >
-                  Start Test
-                </button>
-              </div>
+            <DetailRow label="Subject:" value={exam.subjectName} />
+            <DetailRow label="Semester:" value={toOrdinal(exam.semester)} />
+            <DetailRow label="Date:" value={examDate} />
+            <DetailRow label="Time:" value={examTime} />
+            <DetailRow label="Duration:" value={`${exam.duration} minutes`} />
+            <DetailRow label="Status:" value={status} />
+            <div className="text-right pt-2">
+              <button
+                onClick={() => navigate(`/give-exam/${exam.examId}`)}
+                className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition"
+              >
+                Start Test
+              </button>
             </div>
           </div>
 
@@ -93,24 +99,26 @@ export default function TestPage() {
             <table className="w-full text-left">
               <thead className="bg-[#002855] text-white text-sm font-light">
                 <tr>
-                  <th className="p-3 [@media(min-width:846px)]:p-4">Subject Name</th>
-                  <th className="p-3 [@media(min-width:846px)]:p-4">Exam No.</th>
-                  <th className="p-3 [@media(min-width:846px)]:p-4">Semester</th>
-                  <th className="p-3 [@media(min-width:846px)]:p-4">Total Time</th>
-                  <th className="p-3 [@media(min-width:846px)]:p-4">Date</th>
-                  <th className="p-3 [@media(min-width:846px)]:p-4">Action</th>
+                  <th className="p-3">Subject</th>
+                  <th className="p-3">Semester</th>
+                  <th className="p-3">Date</th>
+                  <th className="p-3">Time</th>
+                  <th className="p-3">Duration</th>
+                  <th className="p-3">Status</th>
+                  <th className="p-3">Action</th>
                 </tr>
               </thead>
               <tbody className="text-black text-md">
                 <tr className="border-t hover:bg-gray-50">
-                  <td className="p-3 [@media(min-width:846px)]:p-4">{exam.subject}</td>
-                  <td className="p-3 [@media(min-width:846px)]:p-4">{exam.examNo}</td>
-                  <td className="p-3 [@media(min-width:846px)]:p-4">{exam.semester}</td>
-                  <td className="p-3 [@media(min-width:846px)]:p-4">{exam.duration}</td>
-                  <td className="p-3 [@media(min-width:846px)]:p-4">{exam.date}</td>
-                  <td className="p-3 [@media(min-width:846px)]:p-4">
+                  <td className="p-3">{exam.subjectName}</td>
+                  <td className="p-3">{toOrdinal(exam.semester)}</td>
+                  <td className="p-3">{examDate}</td>
+                  <td className="p-3">{examTime}</td>
+                  <td className="p-3">{exam.duration} minutes</td>
+                  <td className="p-3">{status}</td>
+                  <td className="p-3">
                     <button
-                      onClick={() => navigate('/give-exam')}
+                      onClick={() => navigate(`/give-exam/${exam.examId}`)}
                       className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-blue-700 transition"
                     >
                       Start Test
@@ -122,6 +130,15 @@ export default function TestPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="bg-white rounded-xl shadow-md p-4 divide-y divide-gray-200 flex justify-between py-2">
+      <span className="font-semibold text-[#002855]">{label}</span>
+      <span>{value}</span>
     </div>
   );
 }

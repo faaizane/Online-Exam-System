@@ -7,6 +7,7 @@ const mammoth  = require('mammoth');
 const Exam     = require('../models/Exam');
 const Subject  = require('../models/Subject');
 
+const Submission  = require('../models/Submission');
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -115,10 +116,8 @@ exports.createExam = async (req, res) => {
       scheduleTime,
     } = req.body;
 
-    // Normalize examNo
     const examNo = normalizeExamNo(rawExamNo);
 
-    // Validate
     if (!year || !semester || !session || !subjectId || !examNo ||
         !questions || !duration || !scheduleDate || !scheduleTime) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -127,11 +126,8 @@ exports.createExam = async (req, res) => {
       return res.status(400).json({ message: 'Duration must be a positive number' });
     }
 
-    // Check Subject
     const subjectDoc = await Subject.findById(subjectId).lean();
-    if (!subjectDoc) {
-      return res.status(404).json({ message: 'Subject not found' });
-    }
+    if (!subjectDoc) return res.status(404).json({ message: 'Subject not found' });
     if (subjectDoc.teacher.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to use this subject' });
     }
@@ -144,7 +140,6 @@ exports.createExam = async (req, res) => {
       });
     }
 
-    // Create exam
     const newExam = new Exam({
       year,
       semester,
@@ -210,9 +205,7 @@ exports.getExamsByFilter = async (req, res) => {
       .populate('subject', 'name')
       .lean();
 
-    // Normalize examNo
     exams = exams.map(exam => ({ ...exam, examNo: normalizeExamNo(exam.examNo) }));
-
     res.json(exams);
   } catch (err) {
     console.error('getExamsByFilter error:', err);
@@ -266,9 +259,7 @@ exports.updateExamById = async (req, res) => {
     }
 
     const subjectDoc = await Subject.findById(subjectId).lean();
-    if (!subjectDoc) {
-      return res.status(404).json({ message: 'Subject not found' });
-    }
+    if (!subjectDoc) return res.status(404).json({ message: 'Subject not found' });
     if (subjectDoc.teacher.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Not authorized to use this subject' });
     }
@@ -342,7 +333,10 @@ exports.getRecentExams = async (req, res) => {
       .populate('subject', 'name')
       .lean();
 
-    exams = exams.map(exam => ({ ...exam, examNo: normalizeExamNo(exam.examNo) }));
+    exams = exams.map(exam => ({
+      ...exam,
+      examNo: normalizeExamNo(exam.examNo)
+    }));
     res.json(exams);
   } catch (err) {
     console.error('getRecentExams error:', err);
@@ -350,30 +344,29 @@ exports.getRecentExams = async (req, res) => {
   }
 };
 
-
-// GET /api/exams/available — student sees only exams they're assigned to
+/**
+ * GET /api/exams/available — student sees only exams they're assigned to
+ */
 exports.getAvailableExams = async (req, res) => {
   try {
     const exams = await Exam.find({ assignedStudents: req.user.id })
       .populate('subject', 'name')
       .lean();
 
-    // Group by year-session
     const grouped = {};
     exams.forEach(exam => {
       const key = `${exam.year}-${exam.session}`;
       if (!grouped[key]) {
-        grouped[key] = {
-          year: exam.year,
-          session: exam.session,
-          exams: []
-        };
+        grouped[key] = { year: exam.year, session: exam.session, exams: [] };
       }
       grouped[key].exams.push({
         _id: exam._id,
         subjectName: exam.subject.name,
+        examNo: normalizeExamNo(exam.examNo),
+        duration: exam.duration,
         scheduleDate: exam.scheduleDate,
-        scheduleTime: exam.scheduleTime
+        scheduleTime: exam.scheduleTime,
+        semester:      exam.semester
       });
     });
 
@@ -386,4 +379,66 @@ exports.getAvailableExams = async (req, res) => {
 
 
 
+// … your existing requires and exports …
 
+/**
+ * POST /api/exams/:id/submit
+ */
+exports.submitExam = async (req, res) => {
+  try {
+    console.log("HIT!", req.body);
+
+    const examId = req.params.id;
+    const studentId = req.user.id;
+    const { answers, score } = req.body;
+
+    // Validate existence
+    const exam = await Exam.findById(examId).lean();
+    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+    // Prevent double‐submissions
+    const existing = await Submission.findOne({ exam: examId, student: studentId });
+    if (existing) {
+      return res.status(400).json({ message: 'You have already submitted this exam' });
+    }
+
+    // Create submission
+    const sub = new Submission({
+      exam: examId,
+      student: studentId,
+      answers,
+      score
+    });
+    await sub.save();
+
+    return res.json({ message: 'Submission recorded', submissionId: sub._id });
+  } catch (err) {
+    console.error('submitExam error:', err);
+    return res.status(500).json({ message: 'Server error recording submission' });
+  }
+};
+
+
+// GET /api/exams/:id/student
+exports.getExamForStudent = async (req, res) => {
+  try {
+    const exam = await Exam.findById(req.params.id)
+      .populate('subject', 'name')
+      .lean();
+    if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+    // Only allow assigned students
+    if (!exam.assignedStudents.map(String).includes(req.user.id)) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    exam.examNo = normalizeExamNo(exam.examNo);
+    res.json({
+      ...exam,
+      subjectName: exam.subject.name // frontend ke liye direct
+    });
+  } catch (err) {
+    console.error('getExamForStudent error:', err);
+    res.status(500).json({ message: 'Server error fetching exam' });
+  }
+};
