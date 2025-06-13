@@ -38,8 +38,9 @@ export default function CreateExam() {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error();
-        setSubjects(await res.json());
-        // clear any previous subject selections
+        const list = await res.json();
+        setSubjects(list);
+        // clear previous selection
         setForm(f => ({ ...f, subject: '', session: '', semester: '' }));
       } catch {
         setSubjects([]);
@@ -68,7 +69,7 @@ export default function CreateExam() {
     }
   };
 
-  // Question handlers (unchanged) …
+  // Question handlers (unchanged)
   const addQuestion = () =>
     setQuestions(qs => [...qs, { questionText:'', options:['','','',''], correctAnswerIndex:null }]);
   const deleteQuestion = idx =>
@@ -82,7 +83,7 @@ export default function CreateExam() {
       return a;
     });
 
-  // File upload (unchanged) …
+  // File upload (unchanged)
   const handleFileUploadClick = () => fileInputRef.current.click();
   const handleFileUpload = async e => {
     const file = e.target.files[0];
@@ -107,7 +108,7 @@ export default function CreateExam() {
     }
   };
 
-  // Submit (unchanged) …
+  // Submit (unchanged)
   const handleSubmit = async e => {
     e.preventDefault();
     const payload = {
@@ -156,7 +157,8 @@ export default function CreateExam() {
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Year</label>
               <input
-                name="year" type="text"
+                name="year"
+                type="text"
                 value={form.year}
                 onChange={handleFormChange}
                 placeholder="e.g. 2025"
@@ -165,7 +167,7 @@ export default function CreateExam() {
               />
             </div>
 
-            {/* Now subject filtered by year */}
+            {/* Subject filtered by year, now shows semester too */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Subject</label>
               <select
@@ -176,9 +178,9 @@ export default function CreateExam() {
                 required
               >
                 <option value="">— Select Subject —</option>
-                {subjects.map(s=>(
+                {subjects.map(s => (
                   <option key={s._id} value={s._id}>
-                    {s.name}
+                    {s.name} — {s.session.charAt(0).toUpperCase() + s.session.slice(1)} {s.year} (Sem {s.semester})
                   </option>
                 ))}
               </select>
@@ -206,7 +208,7 @@ export default function CreateExam() {
               />
             </div>
 
-            {/* The rest unchanged */}
+            {/* Remaining fields unchanged */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Exam Number</label>
               <input
@@ -220,7 +222,9 @@ export default function CreateExam() {
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Duration (min)</label>
               <input
-                name="duration" type="number" min="1"
+                name="duration"
+                type="number"
+                min="1"
                 value={form.duration}
                 onChange={handleFormChange}
                 className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
@@ -230,7 +234,8 @@ export default function CreateExam() {
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Schedule Date</label>
               <input
-                name="scheduleDate" type="date"
+                name="scheduleDate"
+                type="date"
                 value={form.scheduleDate}
                 onChange={handleFormChange}
                 className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
@@ -240,7 +245,8 @@ export default function CreateExam() {
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Schedule Time</label>
               <input
-                name="scheduleTime" type="time"
+                name="scheduleTime"
+                type="time"
                 value={form.scheduleTime}
                 onChange={handleFormChange}
                 className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
@@ -249,6 +255,7 @@ export default function CreateExam() {
             </div>
           </div>
 
+          {/* File upload & questions UI unchanged */}
           {/* File upload unchanged */}
           <div className="flex items-center space-x-4">
             <button
@@ -342,7 +349,6 @@ export default function CreateExam() {
             </button>
           </div>
 
-          {/* Submit */}
           <div className="flex justify-end">
             <button
               type="submit"

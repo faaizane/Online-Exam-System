@@ -32,7 +32,7 @@ export default function EditExam() {
   const [questions, setQuestions] = useState([]);
   const fileInputRef = useRef(null);
 
-  // 1) Fetch this exam’s data first
+  // 1) Load exam data on mount
   useEffect(() => {
     async function loadExam() {
       try {
@@ -43,14 +43,15 @@ export default function EditExam() {
         if (!res.ok) throw new Error();
         const data = await res.json();
 
+        // Initialize form
         setForm({
           year:         data.year,
           subject:      data.subject._id || data.subject,
           session:      data.session,
-          semester:     data.semester,
+          semester:     data.semester.toString(),
           examNo:       data.examNo,
           duration:     data.duration.toString(),
-          scheduleDate: data.scheduleDate.slice(0,10),
+          scheduleDate: data.scheduleDate.slice(0, 10),
           scheduleTime: data.scheduleTime,
         });
         setQuestions(data.questions);
@@ -61,7 +62,7 @@ export default function EditExam() {
     loadExam();
   }, [id]);
 
-  // 2) Whenever year changes (including initial set), fetch that year’s subjects
+  // 2) Fetch subjects whenever `form.year` changes
   useEffect(() => {
     async function fetchByYear() {
       if (!form.year) {
@@ -77,7 +78,6 @@ export default function EditExam() {
         if (!res.ok) throw new Error();
         const list = await res.json();
         setSubjects(list);
-        // keep form.subject if it's in the new list
       } catch {
         setSubjects([]);
       }
@@ -85,7 +85,7 @@ export default function EditExam() {
     fetchByYear();
   }, [form.year]);
 
-  // 3) Handle form field changes
+  // 3) Handle form changes
   const handleFormChange = e => {
     const { name, value } = e.target;
     if (name === 'subject') {
@@ -206,25 +206,35 @@ export default function EditExam() {
                 required
               >
                 <option value="">— Select Subject —</option>
-                {subjects.map(s=>(
-                  <option key={s._id} value={s._id}>{s.name}</option>
+                {subjects.map(s => (
+                  <option key={s._id} value={s._id}>
+                    {s.name} — {s.session.charAt(0).toUpperCase()+s.session.slice(1)} {s.year} (Sem {s.semester})
+                  </option>
                 ))}
               </select>
             </div>
+
+            {/* Auto-filled Session & Semester */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Session</label>
               <input
-                name="session" value={form.session} disabled
+                name="session"
+                value={form.session}
+                disabled
                 className="w-full bg-gray-100 border px-3 py-2 rounded-lg"
               />
             </div>
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Semester</label>
               <input
-                name="semester" value={form.semester} disabled
+                name="semester"
+                value={form.semester}
+                disabled
                 className="w-full bg-gray-100 border px-3 py-2 rounded-lg"
               />
             </div>
+
+            {/* Exam No */}
             <div className="md:col-span-2">
               <label className="block mb-1 font-medium text-[#002855]">Exam Number</label>
               <input
@@ -235,6 +245,8 @@ export default function EditExam() {
                 required
               />
             </div>
+
+            {/* Duration, Date, Time */}
             <div>
               <label className="block mb-1 font-medium text-[#002855]">Duration (min)</label>
               <input
@@ -285,7 +297,7 @@ export default function EditExam() {
             />
           </div>
 
-          {/* Questions (UI unchanged) */}
+          {/* Questions UI (unchanged) */}
           {/* Improved Questions UI */}
           <div className="space-y-6">
             {questions.map((q, idx) => (
@@ -356,7 +368,6 @@ export default function EditExam() {
           </div>
 
           {/* Submit */}
-
           <div className="flex justify-end">
             <button
               type="submit"
