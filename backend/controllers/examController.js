@@ -7,6 +7,7 @@ const mammoth  = require('mammoth');
 const Exam     = require('../models/Exam');
 const Subject  = require('../models/Subject');
 
+
 const upload = multer({ dest: 'uploads/' });
 
 /**
@@ -348,3 +349,41 @@ exports.getRecentExams = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching recent exams' });
   }
 };
+
+
+// GET /api/exams/available — student sees only exams they're assigned to
+exports.getAvailableExams = async (req, res) => {
+  try {
+    const exams = await Exam.find({ assignedStudents: req.user.id })
+      .populate('subject', 'name')
+      .lean();
+
+    // Group by year-session
+    const grouped = {};
+    exams.forEach(exam => {
+      const key = `${exam.year}-${exam.session}`;
+      if (!grouped[key]) {
+        grouped[key] = {
+          year: exam.year,
+          session: exam.session,
+          exams: []
+        };
+      }
+      grouped[key].exams.push({
+        _id: exam._id,
+        subjectName: exam.subject.name,
+        scheduleDate: exam.scheduleDate,
+        scheduleTime: exam.scheduleTime
+      });
+    });
+
+    res.json(Object.values(grouped));
+  } catch (err) {
+    console.error('getAvailableExams error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
