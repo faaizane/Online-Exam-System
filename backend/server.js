@@ -18,6 +18,9 @@ app.use(express.json());
 
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/exams', require('./routes/examRoutes'));
+// after your other `app.use(…)` calls:
+app.use(require('./routes/submissionRoutes'));
+
 
 app.use('/api/subjects', subjectRoutes);
 
