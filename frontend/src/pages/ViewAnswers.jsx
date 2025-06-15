@@ -43,12 +43,12 @@ export default function ViewAnswers() {
                 Review each question’s options and see correct vs. your choice
               </p>
             </div>
-            <button
+            {/* <button
               onClick={() => navigate(-1)}
               className="mt-4 md:mt-0 bg-white border border-gray-300 px-4 py-2 rounded-full shadow text-sm font-medium hover:bg-gray-100 transition"
             >
               ← Back
-            </button>
+            </button> */}
           </div>
 
           {/* Mobile Cards */}
