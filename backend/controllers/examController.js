@@ -301,29 +301,6 @@ exports.updateExamById = async (req, res) => {
   }
 };
 
-/**
- * DELETE /api/exams/:id
- */
-// exports.deleteExamById = async (req, res) => {
-//   try {
-//     const deleted = await Exam.findOneAndDelete({
-//       _id: req.params.id,
-//       createdBy: req.user.id
-//     });
-//     if (!deleted) {
-//       return res
-//         .status(404)
-//         .json({ message: 'Exam not found or you are not authorized' });
-//     }
-//     res.json({ message: 'Exam deleted successfully' });
-//   } catch (err) {
-//     console.error('deleteExamById error:', err);
-//     res.status(500).json({ message: 'Server error deleting exam' });
-//   }
-// };
-
-
-
 
 /**
  * DELETE /api/exams/:id
@@ -379,134 +356,6 @@ exports.getRecentExams = async (req, res) => {
 /**
  * GET /api/exams/available — student sees only exams they're assigned to
  */
-// exports.getAvailableExams = async (req, res) => {
-//   try {
-//     const exams = await Exam.find({ assignedStudents: req.user.id })
-//       .populate('subject', 'name')
-//       .lean();
-
-//     const grouped = {};
-//     exams.forEach(exam => {
-//       const key = `${exam.year}-${exam.session}`;
-//       if (!grouped[key]) {
-//         grouped[key] = { year: exam.year, session: exam.session, exams: [] };
-//       }
-//       grouped[key].exams.push({
-//         _id: exam._id,
-//         subjectName: exam.subject.name,
-//         examNo: normalizeExamNo(exam.examNo),
-//         duration: exam.duration,
-//         scheduleDate: exam.scheduleDate,
-//         scheduleTime: exam.scheduleTime,
-//         semester:      exam.semester
-//       });
-//     });
-
-//     res.json(Object.values(grouped));
-//   } catch (err) {
-//     console.error('getAvailableExams error:', err);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// };
-
-
-// New function which shows exams even if the student is added after the creation of exam
-
-// exports.getAvailableExams = async (req, res) => {
-//   try {
-//     // 1) Get IDs of all subjects this student is in
-//     const subjectDocs = await Subject
-//       .find({ students: req.user.id })
-//       .select('_id')
-//       .lean();
-//     const subjectIds = subjectDocs.map(s => s._id);
-
-//     // 2) Fetch every exam whose `subject` is one of those IDs
-//     const exams = await Exam
-//       .find({ subject: { $in: subjectIds } })
-//       .populate('subject', 'name')
-//       .lean();
-
-//     // 3) Build your existing grouping structure
-//     const grouped = {};
-//     exams.forEach(exam => {
-//       const key = `${exam.year}-${exam.session}`;
-//       if (!grouped[key]) {
-//         grouped[key] = { year: exam.year, session: exam.session, exams: [] };
-//       }
-//       grouped[key].exams.push({
-//         _id:          exam._id,
-//         subjectName:  exam.subject.name,
-//         examNo:       normalizeExamNo(exam.examNo),
-//         duration:     exam.duration,
-//         scheduleDate: exam.scheduleDate,
-//         scheduleTime: exam.scheduleTime,
-//         semester:     exam.semester
-//       });
-//     });
-
-//     return res.json(Object.values(grouped));
-//   } catch (err) {
-//     console.error('getAvailableExams error:', err);
-//     return res.status(500).json({ message: 'Server error' });
-//   }
-// };
-
-
-
-// filters on both the pages 
-// exports.getAvailableExams = async (req, res) => {
-//   try {
-//     // 1) which subjects is this student in now?
-//     const subs = await Subject
-//       .find({ students: req.user.id })
-//       .select('_id')
-//       .lean();
-//     const subjectIds = subs.map(s => s._id);
-
-//     // 2) fetch _and populate_ every exam in those subjects
-//     let exams = await Exam
-//       .find({ subject: { $in: subjectIds } })
-//       .populate('subject', 'name')      // <-- populate subject.name
-//       .lean();
-
-//     // 3) filter out already‐taken exams
-//     const taken = await Submission
-//       .find({ student: req.user.id })
-//       .select('exam')
-//       .lean();
-//     const takenIds = new Set(taken.map(t => t.exam.toString()));
-//     exams = exams.filter(e => !takenIds.has(e._id.toString()));
-
-//     // 4) group by year–session
-//     const grouped = {};
-//     exams.forEach(exam => {
-//       const key = `${exam.year}-${exam.session}`;
-//       if (!grouped[key]) grouped[key] = { year: exam.year, session: exam.session, exams: [] };
-
-//       grouped[key].exams.push({
-//         _id:         exam._id,
-//         subjectName: exam.subject.name,   // <-- use populated name
-//         examNo:      exam.examNo,
-//         duration:    exam.duration,
-//         scheduleDate:exam.scheduleDate,
-//         scheduleTime:exam.scheduleTime,
-//         semester:    exam.semester
-//       });
-//     });
-
-//     return res.json(Object.values(grouped));
-//   } catch (err) {
-//     console.error('getAvailableExams error:', err);
-//     return res.status(500).json({ message: 'Server error' });
-//   }
-// };
-
-
-
-
-
-
 
 exports.getAvailableExams = async (req, res) => {
   try {
@@ -594,7 +443,9 @@ exports.submitExam = async (req, res) => {
       exam: examId,
       student: studentId,
       answers,
-      score
+      score,
+    submitted: true, // ADD THIS LINE!
+    submittedAt: new Date() // (optional, for timestamp)
     });
     await sub.save();
 
@@ -629,4 +480,3 @@ exports.getExamForStudent = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching exam' });
   }
 };
-
