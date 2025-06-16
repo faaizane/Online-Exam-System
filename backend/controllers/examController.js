@@ -6,8 +6,8 @@ const pdfParse = require('pdf-parse');
 const mammoth  = require('mammoth');
 const Exam     = require('../models/Exam');
 const Subject  = require('../models/Subject');
-
 const Submission  = require('../models/Submission');
+const User       = require('../models/User');
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -194,24 +194,53 @@ exports.getGroupedExams = async (req, res) => {
 /**
  * GET /api/exams/filtered
  */
+// exports.getExamsByFilter = async (req, res) => {
+//   try {
+//     const { year, session, semester } = req.query;
+//     if (!year || !session || !semester) {
+//       return res.status(400).json({ message: 'Missing filter parameters' });
+//     }
+
+//     let exams = await Exam.find({ year, session, semester })
+//       .populate('subject', 'name')
+//       .lean();
+
+//     exams = exams.map(exam => ({ ...exam, examNo: normalizeExamNo(exam.examNo) }));
+//     res.json(exams);
+//   } catch (err) {
+//     console.error('getExamsByFilter error:', err);
+//     res.status(500).json({ message: 'Server error fetching exams by filter' });
+//   }
+// };
+
+
 exports.getExamsByFilter = async (req, res) => {
   try {
     const { year, session, semester } = req.query;
-    if (!year || !session || !semester) {
+    if (!year || !session || !semester)
       return res.status(400).json({ message: 'Missing filter parameters' });
-    }
 
     let exams = await Exam.find({ year, session, semester })
       .populate('subject', 'name')
       .lean();
 
-    exams = exams.map(exam => ({ ...exam, examNo: normalizeExamNo(exam.examNo) }));
+    exams = await Promise.all(
+      exams.map(async e => ({
+        ...e,
+        examNo: normalizeExamNo(e.examNo),
+        status: await computeStatus(e)   // 👈 add here
+      }))
+    );
+
     res.json(exams);
   } catch (err) {
     console.error('getExamsByFilter error:', err);
     res.status(500).json({ message: 'Server error fetching exams by filter' });
   }
 };
+
+
+
 
 /**
  * GET /api/exams/:id
@@ -480,3 +509,58 @@ exports.getExamForStudent = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching exam' });
   }
 };
+
+
+
+// Mark zeros for all students who never submitted
+async function finalizeExamZeros(examDoc) {
+  // pull ids who already submitted
+  const doneIds = await Submission.distinct('student', { exam: examDoc._id });
+  const absent  = examDoc.assignedStudents
+                  .filter(id => !doneIds.map(String).includes(String(id)));
+
+  if (!absent.length) return;
+
+  const zeroSubs = absent.map(studentId => ({
+    exam   : examDoc._id,
+    student: studentId,
+    answers: [],            // or null
+    score  : 0,
+    absent : true           // (optional flag, add to Submission schema)
+  }));
+  await Submission.insertMany(zeroSubs);
+}
+
+/* --------------------------------------------------
+   Helper: work out status = 'Scheduled' | 'Completed'
+-------------------------------------------------- */
+async function computeStatus(exam) {
+  // 1) End date-time nikalo
+  const start = new Date(exam.scheduleDate);
+  const [hh, mm] = exam.scheduleTime.split(':').map(Number); // "14:05"
+  start.setHours(hh, mm, 0, 0);
+  const end = new Date(start.getTime() + exam.duration * 60_000); // +duration
+
+  // 2) Time already passed?
+  if (new Date() >= end) {
+   // auto-finalise *once*
+   if (!exam.finalized) {
+     const doc = await Exam.findById(exam._id);   // real Mongoose doc
+     if (doc && !doc.finalized) {
+       await finalizeExamZeros(doc);
+       doc.finalized = true;
+       await doc.save();
+     }
+   }
+    return 'Completed';
+  }
+
+  // 3) Sab students submit kar chuke?
+  const total      = exam.assignedStudents.length;
+  if (!total) return 'Completed';               // edge case
+  const submitted  = await Submission.countDocuments({ exam: exam._id });
+  if (submitted >= total) return 'Completed';
+
+  // 4) Otherwise scheduled/ongoing
+  return 'Scheduled';
+}

@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const examController = require('../controllers/examController');
 const { protect, authorize } = require('../middleware/authMiddleware');
+const submissionController = require('../controllers/submissionController');
 
 // Teacher-only endpoints
 router.post(
@@ -81,6 +82,15 @@ router.get(
   authorize('student'),
   examController.getExamForStudent
 );
+
+// Teacher: list all results for one exam
+router.get(
+  '/:examId/results',
+  protect,
+  authorize('teacher'),
+  submissionController.resultsByExam
+);
+
 
 
 module.exports = router;

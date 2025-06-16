@@ -151,3 +151,33 @@ exports.recent = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching recent results' });
   }
 };
+
+
+// ── teacher-only: GET /api/exams/:examId/results ─────────────────────────────
+exports.resultsByExam = async (req, res) => {
+  try {
+    const examId = req.params.examId;
+
+    // pull every submission for this exam + student basic info
+    const subs = await Submission
+      .find({ exam: examId })
+      .populate({
+        path:   'student',
+        select: 'name registrationNumber'
+      })
+      .lean();
+
+    const results = subs.map(s => ({
+      submissionId:      s._id,
+      studentName:       s.student.name,
+      registrationNumber:s.student.registrationNumber,
+      marks:             s.score,
+      flagged:           s.flagged || false       // ← if you store cheating flags
+    }));
+
+    res.json(results);
+  } catch (err) {
+    console.error('resultsByExam error:', err);
+    res.status(500).json({ message: 'Server error fetching results' });
+  }
+};

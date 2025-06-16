@@ -540,9 +540,13 @@ export default function ExamSchedule() {
     fetchExams();
   }, [year, session, semester]);
 
-  const today     = new Date();
-  const upcoming  = exams.filter(e => new Date(e.scheduleDate) >= today);
-  const completed = exams.filter(e => new Date(e.scheduleDate) < today);
+  // const today     = new Date();
+  // const upcoming  = exams.filter(e => new Date(e.scheduleDate) >= today);
+  // const completed = exams.filter(e => new Date(e.scheduleDate) < today);
+
+   // Backend ab `status` field bhej raha → use karo
+  const upcoming  = exams.filter(e => e.status !== 'Completed');
+  const completed = exams.filter(e => e.status === 'Completed');
 
   const handleEditClick = id => navigate(`/editexam/${id}`);
 
@@ -606,7 +610,7 @@ export default function ExamSchedule() {
                             <td className="p-3 [@media(min-width:846px)]:p-4">
                               {formatTime(exam.scheduleTime)}
                             </td>
-                            <td className="p-3 [@media(min-width:846px)]:p-4">Scheduled</td>
+                            <td className="p-3 [@media(min-width:846px)]:p-4">{exam.status}</td>
                             <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center space-x-2">
                               <button
                                 onClick={() => handleEditClick(exam._id)}
@@ -665,9 +669,14 @@ export default function ExamSchedule() {
                           {new Date(exam.scheduleDate).toLocaleDateString()}
                         </p>
                         <p><strong>Time:</strong> {formatTime(exam.scheduleTime)}</p>
-                        <span className="self-start text-sm font-medium text-green-600">
-                          Scheduled
+                        <span
+                          className={`self-start text-sm font-medium ${
+                          exam.status === 'Completed' ? 'text-gray-500' : 'text-green-600'
+                            }`}
+                          >
+                          {exam.status}
                         </span>
+
                       </div>
                     );
                   })}
@@ -714,7 +723,9 @@ export default function ExamSchedule() {
                               {formatTime(exam.scheduleTime)}
                             </td>
                             <td className="p-3 [@media(min-width:846px)]:p-4 flex justify-center">
-                              <Link to="/viewresults">
+                              <Link to="/viewresults"
+                              state={{ examId: exam._id, title: `${exam.examNo} – ${subj}` }}
+                              >
                                 <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition">
                                   View
                                 </button>

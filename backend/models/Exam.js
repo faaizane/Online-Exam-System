@@ -24,6 +24,7 @@ const examSchema = new mongoose.Schema({
   duration:  { type: Number, required: true },
   scheduleDate: { type: Date, required: true },
   scheduleTime: { type: String, required: true },
+  finalized: { type: Boolean, default: false },   // ⬅️ NEW
 }, {
   timestamps: true,
 });
