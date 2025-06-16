@@ -93,4 +93,4 @@ This project is open source and available under the [MIT License](LICENSE).
 
 ---
 
-For further details or questions, please contact Faizan Elahi at \[faaizane@gmail.com](mailto:your.email@example.com).
+For further details or questions, please contact Faizan Elahi at faaizane@gmail.com.
