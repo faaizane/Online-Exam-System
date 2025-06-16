@@ -452,6 +452,7 @@ export default function TakeExam() {
             } Semester`,
             exams: group.exams.map(e => ({
               examId:       e._id,
+              _id:          e._id,            // ← NAYA naam (TestPage expect karta hai)
               subjectName:  e.subjectName,
               examNo:       e.examNo,
               semester:     e.semester,

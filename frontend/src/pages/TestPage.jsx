@@ -534,7 +534,7 @@ export default function TestPage() {
             <TableHead />
             <tbody className="text-black text-md divide-y divide-gray-200">
               {exams.map(exam => (
-                <ExamRow key={exam.examId} exam={exam} nav={navigate} />
+                <ExamRow key={exam._id} exam={exam} nav={navigate} />
               ))}
             </tbody>
           </table>
@@ -656,11 +656,12 @@ function ExamRow({ exam, nav }) {
 const ActionButton = ({ exam, nav }) => (
   <button
     onClick={e => {
-      e.stopPropagation();                              // stop event bubbling
+      e.stopPropagation();  
+      const examId = exam._id || exam.examId;  // dono mē se jo mil jaye                            // stop event bubbling
       nav(
         exam.attempted
           ? `/view-answers/${exam.submissionId}`        // already attempted
-          : `/give-exam/${exam.examId}`                 // start test
+          : `/give-exam/${exam._id}`                 // start test
       );
     }}
     className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-blue-700 transition"
