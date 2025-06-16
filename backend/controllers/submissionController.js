@@ -121,3 +121,33 @@ exports.bySubject = async (req, res) => {
   }
 };
 
+// GET /api/submissions/recent?limit=5
+exports.recent = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 5;   // default 5
+
+    const subs = await Submission.find({ student: req.user.id })
+      .sort({ createdAt: -1 })          // newest first
+      .limit(limit)
+      .populate({
+        path: 'exam',
+        select: 'examNo semester session subject',
+        populate: { path: 'subject', select: 'name' }
+      })
+      .lean();
+
+    const results = subs.map(s => ({
+      submissionId: s._id,
+      subjectName : s.exam.subject.name,
+      examNo      : s.exam.examNo,
+      semester    : s.exam.semester,
+      date        : s.createdAt,
+      marks       : s.score
+    }));
+
+    res.json(results);
+  } catch (err) {
+    console.error('submissionController.recent:', err);
+    res.status(500).json({ message: 'Server error fetching recent results' });
+  }
+};
