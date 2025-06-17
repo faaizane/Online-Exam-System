@@ -91,6 +91,4 @@ router.get(
   submissionController.resultsByExam
 );
 
-
-
 module.exports = router;
