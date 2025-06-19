@@ -1,3 +1,4 @@
+// frontend/src/pages/TestPage.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
@@ -38,46 +39,35 @@ const getStatus = (exam, dateTime) => {
 };
 
 export default function TestPage() {
-  /* ─ Sidebar state ─ */
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const toggleSidebar = () => setSidebarOpen(o => !o);
 
-  /* ─ Routing state ─ */
   const { state } = useLocation();
   const navigate  = useNavigate();
   const exams     = state?.exams ?? (state?.exam ? [state.exam] : []);
 
-  /* Unconditional hook call to keep order stable */
   const firstExam        = exams[0];
   const formatted        = useFormatted(firstExam);
   const firstExamStatus  = firstExam ? getStatus(firstExam, formatted.dateTime) : '';
 
-  /* Guard: if user refreshed directly on /test-page with no state */
-  useEffect(() => { if (!exams.length) navigate(-1); }, [exams, navigate]);
+  useEffect(() => {
+    if (!exams.length) navigate(-1);
+  }, [exams, navigate]);
 
-  /* ───────── Multiple exams screen ───────── */
   if (exams.length > 1) {
     return (
       <Layout sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar}>
         <h2 className="text-[22px] md:text-2xl font-semibold text-[#002855] mb-4">
           Choose Your Exam
         </h2>
-
-        {/* Mobile / tablet cards */}
         <div className="space-y-4 [@media(min-width:486px)]:hidden">
-          {exams.map((exam, i) => (
-            <ExamCard key={i} exam={exam} nav={navigate} />
-          ))}
+          {exams.map((exam,i) => <ExamCard key={i} exam={exam} nav={navigate} />)}
         </div>
-
-        {/* Desktop table */}
         <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-x-auto">
           <table className="w-full text-left">
             <TableHead />
-            <tbody className="text-black text-md divide-y divide-gray-200">
-              {exams.map(exam => (
-                <ExamRow key={exam._id} exam={exam} nav={navigate} />
-              ))}
+            <tbody className="text-black divide-y divide-gray-200">
+              {exams.map(exam => <ExamRow key={exam._id} exam={exam} nav={navigate} />)}
             </tbody>
           </table>
         </div>
@@ -85,7 +75,6 @@ export default function TestPage() {
     );
   }
 
-  /* ───────── Single exam screen ───────── */
   const exam     = firstExam;
   const examDate = formatted.examDate;
   const examTime = formatted.examTime;
@@ -96,9 +85,7 @@ export default function TestPage() {
       <h2 className="text-[22px] md:text-2xl font-semibold text-[#002855] mb-4">
         Exam Details
       </h2>
-
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
-        {/* Card view */}
         <div className="space-y-4 [@media(min-width:486px)]:hidden px-4 py-4">
           <DetailRow label="Subject:"   value={exam.subjectName} />
           <DetailRow label="Exam No:"   value={exam.examNo} />
@@ -111,12 +98,10 @@ export default function TestPage() {
             <ActionButton exam={exam} nav={navigate} />
           </div>
         </div>
-
-        {/* Desktop table */}
         <div className="hidden [@media(min-width:486px)]:block overflow-x-auto">
           <table className="w-full text-left">
             <TableHead />
-            <tbody className="text-black text-md divide-y divide-gray-200">
+            <tbody className="text-black divide-y divide-gray-200">
               <ExamRow exam={exam} nav={navigate} />
             </tbody>
           </table>
@@ -126,7 +111,6 @@ export default function TestPage() {
   );
 }
 
-/* ───────── Layout with working sidebar ───────── */
 const Layout = ({ children, sidebarOpen, toggleSidebar }) => (
   <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
     <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
@@ -136,8 +120,6 @@ const Layout = ({ children, sidebarOpen, toggleSidebar }) => (
     </div>
   </div>
 );
-
-/* ───────── Tiny components ───────── */
 
 const TableHead = () => (
   <thead className="bg-[#002855] text-white text-sm font-light">
@@ -195,26 +177,46 @@ function ExamRow({ exam, nav }) {
   );
 }
 
-const ActionButton = ({ exam, nav }) => (
-  <button
-    onClick={e => {
-      e.stopPropagation();  
-      const examId = exam._id || exam.examId;  // dono mē se jo mil jaye                            // stop event bubbling
-      nav(
-        exam.attempted
-          ? `/view-answers/${exam.submissionId}`        // already attempted
-          : `/give-exam/${examId}`                 // start test
-      );
-    }}
-    className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-blue-700 transition"
-  >
-    {exam.attempted ? 'View Answers' : 'Start Test'}
-  </button>
-);
-
 const DetailRow = ({ label, value }) => (
   <div className="flex justify-between py-2">
     <span className="font-semibold text-[#002855]">{label}</span>
     <span>{value}</span>
   </div>
 );
+
+const ActionButton = ({ exam, nav }) => {
+  const handleClick = e => {
+    e.stopPropagation();
+    const examId = exam._id || exam.examId;
+    if (exam.attempted) {
+      nav(`/view-answers/${exam.submissionId}`);
+    } else {
+      const url = window.location.origin + `/give-exam/${examId}`;
+      const opts = [
+        'toolbar=no',
+        'location=no',
+        'status=no',
+        'menubar=no',
+        'scrollbars=no',
+        'resizable=no',
+        'width=1024',
+        'height=768'
+      ].join(',');
+      const examWin = window.open(url, 'examWindow', opts);
+      if (examWin) {
+        examWin.focus();
+      } else {
+        alert('Please allow pop-ups for this site to start the exam.');
+      }
+    }
+  };
+
+  return (
+    <button
+      onClick={handleClick}
+      className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+    >
+      {exam.attempted ? 'View Answers' : 'Start Test'}
+    </button>
+  );
+};
