@@ -22,9 +22,14 @@ function normalizeExamNo(raw) {
 }
 
 /**
- * Parse a block of raw text into question objects.
+ * Parse raw extracted text (from PDF/Docx) into structured questions array.
  */
+
 function parseTextToQuestions(text) {
+  // 1. Fix stuck options by putting them on new lines
+  text = text.replace(/([abcd][).])\s*/gi, '\n$1 ');
+
+  // 2. Split text into lines, remove empty lines
   const lines = text
     .split('\n')
     .map(line => line.trim())
@@ -34,6 +39,7 @@ function parseTextToQuestions(text) {
   let currentQuestion = null;
 
   lines.forEach(line => {
+    // Detect new question
     if (/^Q\d+\./i.test(line)) {
       if (currentQuestion) questions.push(currentQuestion);
       currentQuestion = {
@@ -41,20 +47,39 @@ function parseTextToQuestions(text) {
         options: [],
         correctAnswerIndex: null
       };
-    } else if (/^[abcd]\)/i.test(line) && currentQuestion) {
-      currentQuestion.options.push(line.slice(2).trim());
-    } else if (/^Answer:/i.test(line) && currentQuestion) {
+    }
+    // Detect option, also handle if answer is at end of option
+    else if (/^[abcd][).]\s?/i.test(line) && currentQuestion) {
+      const optionPart = line.slice(2).trim();
+      // If 'Answer:' is at end, split it out
+      const [optionText, answerPart] = optionPart.split(/Answer:/i);
+      currentQuestion.options.push(optionText.trim());
+      if (answerPart) {
+        const match = answerPart.match(/\s*([abcd])/i);
+        if (match) {
+          currentQuestion.correctAnswerIndex = ['a','b','c','d'].indexOf(match[1].toLowerCase());
+        }
+      }
+    }
+    // Detect separate answer line
+    else if (/^Answer:/i.test(line) && currentQuestion) {
       const match = line.match(/^Answer:\s*([abcd])/i);
       if (match) {
-        currentQuestion.correctAnswerIndex =
-          ['a','b','c','d'].indexOf(match[1].toLowerCase());
+        currentQuestion.correctAnswerIndex = ['a','b','c','d'].indexOf(match[1].toLowerCase());
       }
+    }
+    // Multiline question: before options, append to question text
+    else if (currentQuestion && currentQuestion.options.length === 0 && !/^Answer:/i.test(line)) {
+      currentQuestion.questionText += ' ' + line.trim();
     }
   });
 
+  // Last question add karo
   if (currentQuestion) questions.push(currentQuestion);
   return questions;
 }
+
+
 
 /**
  * POST /api/exams/upload
@@ -191,28 +216,6 @@ exports.getGroupedExams = async (req, res) => {
   }
 };
 
-/**
- * GET /api/exams/filtered
- */
-// exports.getExamsByFilter = async (req, res) => {
-//   try {
-//     const { year, session, semester } = req.query;
-//     if (!year || !session || !semester) {
-//       return res.status(400).json({ message: 'Missing filter parameters' });
-//     }
-
-//     let exams = await Exam.find({ year, session, semester })
-//       .populate('subject', 'name')
-//       .lean();
-
-//     exams = exams.map(exam => ({ ...exam, examNo: normalizeExamNo(exam.examNo) }));
-//     res.json(exams);
-//   } catch (err) {
-//     console.error('getExamsByFilter error:', err);
-//     res.status(500).json({ message: 'Server error fetching exams by filter' });
-//   }
-// };
-
 
 exports.getExamsByFilter = async (req, res) => {
   try {
@@ -238,8 +241,6 @@ exports.getExamsByFilter = async (req, res) => {
     res.status(500).json({ message: 'Server error fetching exams by filter' });
   }
 };
-
-
 
 
 /**
@@ -365,22 +366,27 @@ exports.deleteExamById = async (req, res) => {
  */
 exports.getRecentExams = async (req, res) => {
   try {
-    let exams = await Exam.find()
-      .sort({ scheduleDate: -1 })
-      .limit(5)
+    let exams = await Exam.find({ teacher: req.user._id })
       .populate('subject', 'name')
+      .sort({ createdAt: -1 })
+      .limit(5)
       .lean();
 
-    exams = exams.map(exam => ({
-      ...exam,
-      examNo: normalizeExamNo(exam.examNo)
-    }));
+    exams = await Promise.all(
+      exams.map(async e => ({
+        ...e,
+        examNo: normalizeExamNo(e.examNo),
+        status: await computeStatus(e)   // ✅ safe now
+      }))
+    );
+
     res.json(exams);
   } catch (err) {
     console.error('getRecentExams error:', err);
     res.status(500).json({ message: 'Server error fetching recent exams' });
   }
 };
+
 
 /**
  * GET /api/exams/available — student sees only exams they're assigned to

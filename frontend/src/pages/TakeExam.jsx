@@ -1,427 +1,3 @@
-// // File: src/pages/TakeExam.jsx
-// import React, { useState, useEffect } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import Sidebar from '../components/SSidebar';
-// import StudentHeader from '../components/SHeader';
-
-// export default function TakeExam() {
-//   const navigate = useNavigate();
-//   const [sidebarOpen, setSidebarOpen] = useState(false);
-//   const [sections, setSections] = useState([]);
-//   const [expanded, setExpanded] = useState(null);
-
-//   useEffect(() => {
-//     async function loadAvailable() {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch('/api/exams/available', {
-//           headers: { Authorization: `Bearer ${token}` }
-//         });
-//         if (!res.ok) throw new Error();
-//         const data = await res.json();
-//         setSections(
-//           data.map(group => ({
-//             id: `${group.year}${group.session}`,
-//             label: `${group.year} – ${
-//               group.session.charAt(0).toUpperCase() + group.session.slice(1)
-//             } Semester`,
-//             exams: group.exams.map(e => ({
-//               examId: e._id,
-//               subjectName: e.subjectName,
-//               examNo: e.examNo,
-//               duration: e.duration,
-//               scheduleDate: e.scheduleDate,
-//               scheduleTime: e.scheduleTime,
-//               semester:     e.semester
-//             }))
-//           }))
-//         );
-//         if (data.length) setExpanded(`${data[0].year}${data[0].session}`);
-//       } catch {
-//         alert('Failed to load available exams');
-//       }
-//     }
-//     loadAvailable();
-//   }, []);
-
-//   const toggleSidebar = () => setSidebarOpen(o => !o);
-//   const toggleSection = id => setExpanded(expanded === id ? null : id);
-//   const startExam = exam =>
-//     navigate('/take-exam/test-page', { state: { exam } });
-
-//   return (
-//     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-//       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-//       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-//         <StudentHeader toggleSidebar={toggleSidebar} />
-
-//         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">
-//           <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-2">
-//             Take Exam
-//           </h1>
-//           <p className="text-[16px] md:text-lg text-gray-600 mb-8">
-//             Select a subject to begin
-//           </p>
-
-//           {sections.map(sec => (
-//             <section key={sec.id} className="mb-6">
-//               <button
-//                 onClick={() => toggleSection(sec.id)}
-//                 className="w-full bg-[#002855] text-white px-4 md:px-6 py-2 md:py-3 rounded flex justify-between items-center font-medium"
-//               >
-//                 <span className="text-[16px] md:text-lg">{sec.label}</span>
-//                 <span className="text-sm">
-//                   {expanded === sec.id ? '▲' : '▼'}
-//                 </span>
-//               </button>
-
-//               {expanded === sec.id && (
-//                 <div className="border border-gray-300 border-t-0 rounded-b overflow-hidden">
-//                   {sec.exams.map(exam => (
-//                     <div
-//                       key={exam.examId}
-//                       onClick={() => startExam(exam)}
-//                       className="p-3 md:p-4 bg-white border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition"
-//                     >
-//                       {exam.subjectName}
-//                     </div>
-//                   ))}
-//                   {sec.exams.length === 0 && (
-//                     <div className="p-4 bg-white text-gray-500">
-//                       No exams available
-//                     </div>
-//                   )}
-//                 </div>
-//               )}
-//             </section>
-//           ))}
-
-//           {sections.length === 0 && (
-//             <p className="text-center text-gray-500">No exams found for you.</p>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-// // src/pages/TakeExam.jsx
-// import React, { useState, useEffect } from 'react';
-// import { useNavigate }                from 'react-router-dom';
-// import Sidebar                        from '../components/SSidebar';
-// import StudentHeader                  from '../components/SHeader';
-
-// export default function TakeExam() {
-//   const navigate = useNavigate();
-//   const [sidebarOpen, setSidebarOpen] = useState(false);
-//   const [sections, setSections]       = useState([]);
-//   const [expanded, setExpanded]       = useState(null);
-
-//   useEffect(() => {
-//     async function loadAvailable() {
-//       try {
-//         const token = localStorage.getItem('token');
-//         // fetch ALL exams — both scheduled & attempted
-//         const res = await fetch('/api/exams/available?includeAttempted=true', {
-//           headers: { Authorization: `Bearer ${token}` }
-//         });
-//         if (!res.ok) throw new Error('Failed to load exams');
-//         const data = await res.json();
-
-//         setSections(
-//           data.map(group => ({
-//             id:    `${group.year}${group.session}`,
-//             label: `${group.year} – ${group.session.charAt(0).toUpperCase() + group.session.slice(1)} Semester`,
-//             exams: group.exams.map(e => ({
-//               examId:       e._id,
-//               subjectName:  e.subjectName,
-//               semester:     e.semester,
-//               attempted:    e.attempted,
-//               submissionId: e.submissionId
-//             }))
-//           }))
-//         );
-//         if (data.length) setExpanded(`${data[0].year}${data[0].session}`);
-//       } catch (err) {
-//         console.error(err);
-//         alert('Failed to load available exams');
-//       }
-//     }
-//     loadAvailable();
-//   }, []);
-
-//   const toggleSidebar = () => setSidebarOpen(o => !o);
-//   const toggleSection = id => setExpanded(expanded === id ? null : id);
-//   const startExam     = exam => navigate('/take-exam/test-page', { state: { exam } });
-
-//   return (
-//     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-//       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-//       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-//         <StudentHeader toggleSidebar={toggleSidebar} />
-
-//         <div className="px-4 py-8">
-//           <h1 className="text-4xl font-bold text-[#002855] mb-6">Take Exam</h1>
-//           {sections.map(sec => (
-//             <section key={sec.id} className="mb-6">
-//               <button
-//                 onClick={() => toggleSection(sec.id)}
-//                 className="w-full bg-[#002855] text-white px-4 py-3 rounded flex justify-between items-center font-medium"
-//               >
-//                 <span>{sec.label}</span>
-//                 <span>{expanded === sec.id ? '▲' : '▼'}</span>
-//               </button>
-
-//               {expanded === sec.id && (
-//                 <div className="border border-gray-300 border-t-0 rounded-b overflow-hidden">
-//                   {sec.exams.length ? sec.exams.map(exam => (
-//                     <div
-//                       key={exam.examId}
-//                       onClick={() => startExam(exam)}
-//                       className="p-4 bg-white border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition"
-//                     >
-//                       {exam.subjectName}
-//                     </div>
-//                   )) : (
-//                     <div className="p-4 bg-white text-gray-500">
-//                       No exams available
-//                     </div>
-//                   )}
-//                 </div>
-//               )}
-//             </section>
-//           ))}
-//           {!sections.length && (
-//             <p className="text-center text-gray-500">No exams found for you.</p>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-// // src/pages/TakeExam.jsx
-// import React, { useState, useEffect } from 'react';
-// import { useNavigate }                from 'react-router-dom';
-// import Sidebar                        from '../components/SSidebar';
-// import StudentHeader                  from '../components/SHeader';
-
-// export default function TakeExam() {
-//   const navigate = useNavigate();
-//   const [sidebarOpen, setSidebarOpen] = useState(false);
-//   const [sections, setSections]       = useState([]);
-//   const [expanded, setExpanded]       = useState(null);
-
-//   useEffect(() => {
-//     async function loadAvailable() {
-//       try {
-//         const token = localStorage.getItem('token');
-//         // fetch ALL exams — both scheduled & attempted
-//         const res = await fetch('/api/exams/available?includeAttempted=true', {
-//           headers: { Authorization: `Bearer ${token}` }
-//         });
-//         if (!res.ok) throw new Error('Failed to load exams');
-//         const data = await res.json();
-
-//         setSections(
-//           data.map(group => ({
-//             id:    `${group.year}${group.session}`,
-//             label: `${group.year} – ${
-//               group.session.charAt(0).toUpperCase() + group.session.slice(1)
-//             } Semester`,
-//             exams: group.exams.map(e => ({
-//               examId:       e._id,
-//               subjectName:  e.subjectName,
-//               semester:     e.semester,
-//               duration:     e.duration,       // ← added
-//               scheduleDate: e.scheduleDate,   // ← added
-//               scheduleTime: e.scheduleTime,   // ← added
-//               attempted:    e.attempted,
-//               submissionId: e.submissionId
-//             }))
-//           }))
-//         );
-//         if (data.length) setExpanded(`${data[0].year}${data[0].session}`);
-//       } catch (err) {
-//         console.error(err);
-//         alert('Failed to load available exams');
-//       }
-//     }
-//     loadAvailable();
-//   }, []);
-
-//   const toggleSidebar = () => setSidebarOpen(o => !o);
-//   const toggleSection = id => setExpanded(expanded === id ? null : id);
-//   const startExam     = exam => navigate('/take-exam/test-page', { state: { exam } });
-
-//   return (
-//     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-//       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-//       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-//         <StudentHeader toggleSidebar={toggleSidebar} />
-
-//         <div className="px-4 py-8">
-//           <h1 className="text-4xl font-bold text-[#002855] mb-6">Take Exam</h1>
-//           {sections.map(sec => (
-//             <section key={sec.id} className="mb-6">
-//               <button
-//                 onClick={() => toggleSection(sec.id)}
-//                 className="w-full bg-[#002855] text-white px-4 py-3 rounded flex justify-between items-center font-medium"
-//               >
-//                 <span>{sec.label}</span>
-//                 <span>{expanded === sec.id ? '▲' : '▼'}</span>
-//               </button>
-
-//               {expanded === sec.id && (
-//                 <div className="border border-gray-300 border-t-0 rounded-b overflow-hidden">
-//                   {sec.exams.length ? sec.exams.map(exam => (
-//                     <div
-//                       key={exam.examId}
-//                       onClick={() => startExam(exam)}
-//                       className="p-4 bg-white border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition"
-//                     >
-//                       {exam.subjectName}
-//                     </div>
-//                   )) : (
-//                     <div className="p-4 bg-white text-gray-500">
-//                       No exams available
-//                     </div>
-//                   )}
-//                 </div>
-//               )}
-//             </section>
-//           ))}
-//           {!sections.length && (
-//             <p className="text-center text-gray-500">No exams found for you.</p>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-// // src/pages/TakeExam.jsx
-// import React, { useState, useEffect } from 'react';
-// import { useNavigate }                from 'react-router-dom';
-// import Sidebar                        from '../components/SSidebar';
-// import StudentHeader                  from '../components/SHeader';
-
-// export default function TakeExam() {
-//   const navigate = useNavigate();
-//   const [sidebarOpen, setSidebarOpen] = useState(false);
-//   const [sections, setSections]       = useState([]);
-//   const [expanded, setExpanded]       = useState(null);
-
-//   useEffect(() => {
-//     async function loadAvailable() {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch('/api/exams/available?includeAttempted=true', {
-//           headers: { Authorization: `Bearer ${token}` }
-//         });
-//         if (!res.ok) throw new Error('Failed to load exams');
-//         const data = await res.json();
-
-//         setSections(
-//           data.map(group => ({
-//             id:    `${group.year}${group.session}`,
-//             label: `${group.year} – ${
-//               group.session.charAt(0).toUpperCase() + group.session.slice(1)
-//             } Semester`,
-//             exams: group.exams.map(e => ({
-//               examId:       e._id,
-//               subjectName:  e.subjectName,
-//               examNo:       e.examNo,
-//               semester:     e.semester,
-//               duration:     e.duration,
-//               scheduleDate: e.scheduleDate,
-//               scheduleTime: e.scheduleTime,
-//               attempted:    e.attempted,
-//               submissionId: e.submissionId
-//             }))
-//           }))
-//         );
-//         if (data.length) setExpanded(`${data[0].year}${data[0].session}`);
-//       } catch (err) {
-//         console.error(err);
-//         alert('Failed to load available exams');
-//       }
-//     }
-//     loadAvailable();
-//   }, []);
-
-//   const toggleSidebar = () => setSidebarOpen(o => !o);
-//   const toggleSection = id => setExpanded(expanded === id ? null : id);
-//   const startExam     = exam => navigate('/take-exam/test-page', { state: { exam } });
-
-//   return (
-//     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
-//       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-//       <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
-//         <StudentHeader toggleSidebar={toggleSidebar} />
-
-//         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">
-//           <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-6">
-//             Take Exam
-//           </h1>
-
-//           {sections.map(sec => (
-//             <section key={sec.id} className="mb-6">
-//               <div className="bg-white rounded-xl shadow-md overflow-hidden">
-//                 {/* header */}
-//                 <button
-//                   onClick={() => toggleSection(sec.id)}
-//                   className="w-full bg-[#002855] text-white px-4 md:px-6 py-2 md:py-3 flex justify-between items-center font-medium"
-//                 >
-//                   <span className="text-[16px] md:text-lg">{sec.label}</span>
-//                   <span className="text-sm">
-//                     {expanded === sec.id ? '▲' : '▼'}
-//                   </span>
-//                 </button>
-
-//                 {/* body */}
-//                 {expanded === sec.id && (
-//                   <div className="divide-y divide-gray-200">
-//                     {sec.exams.length ? (
-//                       sec.exams.map(exam => (
-//                         <div
-//                           key={exam.examId}
-//                           onClick={() => startExam(exam)}
-//                           className="px-4 md:px-6 py-2 md:py-3 bg-white cursor-pointer hover:bg-gray-100 transition"
-//                         >
-//                           {exam.subjectName}
-//                         </div>
-//                       ))
-//                     ) : (
-//                       <div className="px-4 md:px-6 py-2 md:py-3 bg-white text-gray-500">
-//                         No exams available
-//                       </div>
-//                     )}
-//                   </div>
-//                 )}
-//               </div>
-//             </section>
-//           ))}
-
-//           {!sections.length && (
-//             <p className="text-center text-gray-500">No exams found for you.</p>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
 // src/pages/TakeExam.jsx
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -452,7 +28,7 @@ export default function TakeExam() {
             } Semester`,
             exams: group.exams.map(e => ({
               examId:       e._id,
-              _id:          e._id,            // ← NAYA naam (TestPage expect karta hai)
+              _id:          e._id,            // ← keep for TestPage
               subjectName:  e.subjectName,
               examNo:       e.examNo,
               semester:     e.semester,
@@ -464,6 +40,8 @@ export default function TakeExam() {
             }))
           }))
         );
+
+        // auto-expand first group
         if (data.length) {
           setExpanded(`${data[0].year}${data[0].session}`);
         }
@@ -475,8 +53,8 @@ export default function TakeExam() {
     loadAvailable();
   }, []);
 
-  const toggleSidebar = () => setSidebarOpen(o => !o);
-  const toggleSection = id => setExpanded(expanded === id ? null : id);
+  const toggleSidebar  = () => setSidebarOpen(o => !o);
+  const toggleSection  = id => setExpanded(expanded === id ? null : id);
 
   return (
     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
@@ -490,7 +68,7 @@ export default function TakeExam() {
           </h1>
 
           {sections.map(sec => {
-            // Group exams by subjectName
+            // group by subjectName
             const bySubject = sec.exams.reduce((acc, e) => {
               (acc[e.subjectName] ||= []).push(e);
               return acc;
@@ -513,28 +91,18 @@ export default function TakeExam() {
                   {/* Section body */}
                   {expanded === sec.id && (
                     <div className="divide-y divide-gray-200">
-                      {sec.exams.length > 0 ? (
-                        Object.entries(bySubject).map(([subjectName, exams]) => (
-                          <div
-                            key={subjectName}
-                            onClick={() =>
-                              navigate('/take-exam/test-page', { state: { exams } })
-                            }
-                            className="px-4 md:px-6 py-2 md:py-3 bg-white cursor-pointer hover:bg-gray-100 transition flex justify-between items-center"
-                          >
-                            <span>{subjectName}</span>
-                            {exams.length > 1 && (
-                              <span className="text-sm text-gray-500">
-                                ({exams.length})
-                              </span>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="px-4 md:px-6 py-2 md:py-3 bg-white text-gray-500">
-                          No exams available
+                      {Object.entries(bySubject).map(([subjectName, exams]) => (
+                        <div
+                          key={subjectName}
+                          onClick={() =>
+                            navigate('/take-exam/test-page', { state: { exams } })
+                          }
+                          className="px-4 md:px-6 py-2 md:py-3 bg-white cursor-pointer hover:bg-gray-100 transition flex items-center"
+                        >
+                          {/* Only the subject name now */}
+                          <span className="text-gray-800">{subjectName}</span>
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
                 </div>

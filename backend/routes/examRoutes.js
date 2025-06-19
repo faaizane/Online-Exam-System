@@ -5,6 +5,7 @@ const examController = require('../controllers/examController');
 const { protect, authorize } = require('../middleware/authMiddleware');
 const submissionController = require('../controllers/submissionController');
 
+
 // Teacher-only endpoints
 router.post(
   '/create',

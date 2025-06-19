@@ -24,7 +24,6 @@ export default function ViewResult() {
         // Transform API → UI data
         const transformed = data.map(g => ({
           id: `${g.year}${g.session}`,
-          // Capitalize first letter + add “Semester”
           label: `${g.year} – ${
             g.session.charAt(0).toUpperCase() + g.session.slice(1)
           } Semester`,
@@ -58,9 +57,9 @@ export default function ViewResult() {
 
           {sections.map(sec => (
             <section key={sec.id} className="mb-6">
-              {/* Card wrapper (soft UI) */}
+              {/* Card wrapper */}
               <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                {/* Blue accordion header */}
+                {/* Accordion header */}
                 <button
                   onClick={() => toggleSection(sec.id)}
                   className="w-full bg-[#002855] text-white px-4 md:px-6 py-3 flex justify-between items-center font-medium"
@@ -69,28 +68,26 @@ export default function ViewResult() {
                   <span>{expanded === sec.id ? '▲' : '▼'}</span>
                 </button>
 
-                {/* Collapsed body */}
+                {/* Accordion body */}
                 {expanded === sec.id && (
                   <div className="divide-y divide-gray-200">
                     {Object.entries(sec.subjects).map(([subjectName, items]) => (
                       <div
                         key={subjectName}
                         onClick={() =>
-                          navigate(`/view-result-details/${items[0].subjectId}`, {
-                            state: { subjectName, items }
-                          })
+                          navigate(
+                            `/view-result-details/${items[0].subjectId}`,
+                            { state: { subjectName, items } }
+                          )
                         }
-                        className="px-4 md:px-6 py-3 bg-white cursor-pointer hover:bg-gray-100 transition flex justify-between items-center"
+                        className="px-4 md:px-6 py-3 bg-white cursor-pointer hover:bg-gray-100 transition flex items-center"
                       >
-                        <span>{subjectName}</span>
-                        {items.length > 1 && (
-                          <span className="text-sm text-gray-500">
-                            ({items.length})
-                          </span>
-                        )}
+                        {/* Only the subject name now */}
+                        <span className="text-gray-800">{subjectName}</span>
                       </div>
                     ))}
 
+                    {/* Fallback if no subjects */}
                     {Object.keys(sec.subjects).length === 0 && (
                       <div className="px-4 md:px-6 py-3 text-gray-500">
                         No results in this session
