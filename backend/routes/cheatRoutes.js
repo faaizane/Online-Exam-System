@@ -43,29 +43,63 @@ router.post(
 );
 
 // ✅ Teacher fetches all cheats
+// router.get(
+//   '/',
+//   protect,
+//   authorize('teacher'),
+//   async (req, res) => {
+//     try {
+//       const all = await Cheat.find().populate('student exam');
+//       return res.json(
+//         all.map(c => ({
+//           id:        c._id,
+//           student:   c.student.name,
+//           // examNo is the correct field on your Exam model
+//           examNo:    c.exam.examNo,
+//           reason:    c.reason,
+//           timestamp: c.createdAt
+//         }))
+//       );
+//     } catch (err) {
+//       console.error('Fetch cheats error:', err);
+//       return res.status(500).json({ error: err.message });
+//     }
+//   }
+// );
+
+
+
+
+// ✅ Teacher fetches all cheats
 router.get(
   '/',
   protect,
   authorize('teacher'),
   async (req, res) => {
     try {
-      const all = await Cheat.find().populate('student exam');
-      return res.json(
-        all.map(c => ({
+      const clips = await Cheat.find()
+        .populate('student', 'name')
+        .populate('exam',    'examNo');
+
+      const incidents = clips
+        .filter(c => c.student && c.exam)
+        .map(c => ({
           id:        c._id,
           student:   c.student.name,
-          // examNo is the correct field on your Exam model
-          examNo:    c.exam.examNo,
+          exam:      c.exam.examNo,
           reason:    c.reason,
           timestamp: c.createdAt
-        }))
-      );
+        }));
+
+      return res.json(incidents);
     } catch (err) {
       console.error('Fetch cheats error:', err);
       return res.status(500).json({ error: err.message });
     }
   }
 );
+
+
 
 // ✅ Teacher streams the clip
 router.get(
@@ -85,5 +119,39 @@ router.get(
     }
   }
 );
+
+
+
+
+
+// ── NEW: allow a student to check if they’ve just been flagged ──
+router.get(
+  '/me',
+  protect,
+  authorize('student'),
+  async (req, res) => {
+    try {
+      const examId = req.query.exam;
+      if (!examId) return res.status(400).json({ message: 'Missing exam id' });
+
+      // find any cheat record for this student + this exam in the last minute
+      const since = new Date(Date.now() - 60*1000);
+      const flag = await Cheat.exists({
+        student: req.user.id,
+        exam:    examId,
+        createdAt: { $gte: since }
+      });
+
+      res.json({ cheated: !!flag });
+    } catch (err) {
+      console.error('Student cheat check error:', err);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
+
+
+
+
 
 module.exports = router;

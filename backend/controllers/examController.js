@@ -11,6 +11,9 @@ const User       = require('../models/User');
 
 const upload = multer({ dest: 'uploads/' });
 
+const CheatClip    = require('../models/CheatClip');  // ← add this
+
+
 /**
  * Normalize any “quiz” + number input into “Quiz No. XX”
  */
@@ -336,6 +339,36 @@ exports.updateExamById = async (req, res) => {
  * DELETE /api/exams/:id
  * Deletes the exam (only by its creator) and cascades to delete all related submissions.
  */
+// exports.deleteExamById = async (req, res) => {
+//   try {
+//     // 1) Delete the exam itself (only if created by this user)
+//     const deleted = await Exam.findOneAndDelete({
+//       _id: req.params.id,
+//       createdBy: req.user.id
+//     });
+
+//     if (!deleted) {
+//       return res
+//         .status(404)
+//         .json({ message: 'Exam not found or you are not authorized' });
+//     }
+
+//     // 2) Cascade: remove ALL submissions for that exam
+//     await Submission.deleteMany({ exam: deleted._id });
+
+//     return res.json({ message: 'Exam and its submissions deleted successfully' });
+//   } catch (err) {
+//     console.error('deleteExamById error:', err);
+//     return res.status(500).json({ message: 'Server error deleting exam' });
+//   }
+// };
+
+
+
+/**
+ * DELETE /api/exams/:id
+ * Deletes the exam (only by its creator) and cascades to delete all related submissions and cheat clips.
+ */
 exports.deleteExamById = async (req, res) => {
   try {
     // 1) Delete the exam itself (only if created by this user)
@@ -353,7 +386,10 @@ exports.deleteExamById = async (req, res) => {
     // 2) Cascade: remove ALL submissions for that exam
     await Submission.deleteMany({ exam: deleted._id });
 
-    return res.json({ message: 'Exam and its submissions deleted successfully' });
+    // 3) Cascade: remove ALL cheat clips for that exam
+    await CheatClip.deleteMany({ exam: deleted._id });
+
+    return res.json({ message: 'Exam, its submissions and cheat clips deleted successfully' });
   } catch (err) {
     console.error('deleteExamById error:', err);
     return res.status(500).json({ message: 'Server error deleting exam' });
