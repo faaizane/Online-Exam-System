@@ -2,6 +2,8 @@
 
 const Progress = require('../models/Progress');
 const Exam     = require('../models/Exam');
+const Submission = require('../models/Submission');  // ← add this
+
 
 exports.getProgress = async (req, res) => {
   try {

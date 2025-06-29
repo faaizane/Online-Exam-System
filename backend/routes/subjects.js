@@ -77,7 +77,4 @@ router.delete(
   subjectController.removeStudentFromSubject
 );
 
-
-
-
 module.exports = router;

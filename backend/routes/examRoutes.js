@@ -2,8 +2,13 @@
 const express = require('express');
 const router = express.Router();
 const examController = require('../controllers/examController');
+const progressController = require('../controllers/progressController'); // ← add this
 const { protect, authorize } = require('../middleware/authMiddleware');
 const submissionController = require('../controllers/submissionController');
+
+const Exam       = require('../models/Exam');
+const Submission = require('../models/Submission');
+const Progress   = require('../models/Progress');
 
 
 // Teacher-only endpoints
@@ -75,6 +80,7 @@ router.post(
   authorize('student'),
   examController.submitExam
 );
+
 
 // Student fetch their exam details by id
 router.get(
