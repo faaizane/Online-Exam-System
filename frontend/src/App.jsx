@@ -256,6 +256,9 @@ import TeacherProfile    from './pages/TeacherProfile';
 import SubjectStudents   from './pages/SubjectStudents';
 import AddSubject        from './pages/AddSubject';
 
+import ReviewCheatingDetails from './pages/ReviewCheatingDetails';
+
+
 export default function App() {
   return (
     <Router>
@@ -279,9 +282,9 @@ export default function App() {
         <Route path="/student-profile" element={<StudentProfile />} />
         <Route path="/give-exam/:id" element={<GiveExam />} />
         {/* // after: */}
-<Route path="/view-result-details/:subjectId" element={<ViewResultDetails />} />
-{/* // …and if you want a separate answers page: */}
-<Route path="/view-answers/:submissionId" element={<ViewAnswers />} />
+        <Route path="/view-result-details/:subjectId" element={<ViewResultDetails />} />
+        {/* // …and if you want a separate answers page: */}
+        <Route path="/view-answers/:submissionId" element={<ViewAnswers />} />
 
         {/* teacher-only pages (now accessible directly) */}
         <Route path="/tdashboard" element={<TDashboard />} />
@@ -290,6 +293,7 @@ export default function App() {
         <Route path="/createexam" element={<CreateExam />} />
         <Route path="/editexam/:id" element={<EditExam />} />
         <Route path="/reviewcheating" element={<ReviewCheating />} />
+        <Route path="/reviewcheating/details" element={<ReviewCheatingDetails />} />
         <Route path="/viewresults" element={<ViewTeacherResults />} />
         <Route path="/examschedule" element={<ExamSchedule />} />
         <Route path="/teacherprofile" element={<TeacherProfile />} />

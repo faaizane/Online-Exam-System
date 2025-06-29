@@ -12,7 +12,7 @@ const User       = require('../models/User');
 const upload = multer({ dest: 'uploads/' });
 
 const CheatClip    = require('../models/CheatClip');  // ← add this
-
+const seedrandom = require('seedrandom');
 
 /**
  * Normalize any “quiz” + number input into “Quiz No. XX”
@@ -528,7 +528,32 @@ exports.submitExam = async (req, res) => {
 };
 
 
-// GET /api/exams/:id/student
+// // GET /api/exams/:id/student
+// exports.getExamForStudent = async (req, res) => {
+//   try {
+//     const exam = await Exam.findById(req.params.id)
+//       .populate('subject', 'name')
+//       .lean();
+//     if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+//     // Only allow assigned students
+//     if (!exam.assignedStudents.map(String).includes(req.user.id)) {
+//       return res.status(403).json({ message: 'Forbidden' });
+//     }
+
+//     exam.examNo = normalizeExamNo(exam.examNo);
+//     res.json({
+//       ...exam,
+//       subjectName: exam.subject.name // frontend ke liye direct
+//     });
+//   } catch (err) {
+//     console.error('getExamForStudent error:', err);
+//     res.status(500).json({ message: 'Server error fetching exam' });
+//   }
+// };
+
+
+
 exports.getExamForStudent = async (req, res) => {
   try {
     const exam = await Exam.findById(req.params.id)
@@ -536,15 +561,45 @@ exports.getExamForStudent = async (req, res) => {
       .lean();
     if (!exam) return res.status(404).json({ message: 'Exam not found' });
 
-    // Only allow assigned students
-    if (!exam.assignedStudents.map(String).includes(req.user.id)) {
+    // ensure student is allowed
+    if (!exam.assignedStudents.map(String).includes(req.user.id))
       return res.status(403).json({ message: 'Forbidden' });
+
+    // Seed RNG with studentId+examId so it’s consistent per student
+    const seed = req.user.id + exam._id.toString();
+    const rng = seedrandom(seed);
+
+    // Deep‐clone questions so we don’t mutate DB
+    const questions = JSON.parse(JSON.stringify(exam.questions));
+
+    // Fisher–Yates shuffle helper
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
     }
 
-    exam.examNo = normalizeExamNo(exam.examNo);
+    // Shuffle questions
+    shuffle(questions);
+
+    // For each question, shuffle its options and adjust correctAnswerIndex
+    questions.forEach(q => {
+      // pair each option with its original index
+      const opts = q.options.map((text, idx) => ({ text, idx }));
+      shuffle(opts);
+      // find new index of the correct option
+      const newCorrect = opts.findIndex(o => o.idx === q.correctAnswerIndex);
+      // replace options and correctAnswerIndex
+      q.options = opts.map(o => o.text);
+      q.correctAnswerIndex = newCorrect;
+    });
+
+    // Build the payload
     res.json({
       ...exam,
-      subjectName: exam.subject.name // frontend ke liye direct
+      questions,
+      subjectName: exam.subject.name
     });
   } catch (err) {
     console.error('getExamForStudent error:', err);

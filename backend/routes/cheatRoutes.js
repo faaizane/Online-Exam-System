@@ -78,8 +78,12 @@ router.get(
   async (req, res) => {
     try {
       const clips = await Cheat.find()
-        .populate('student', 'name')
-        .populate('exam',    'examNo');
+        .populate('student', 'name registrationNumber')
+        .populate({
+          path: 'exam',
+          select: 'examNo year session semester subject',
+          populate: { path: 'subject', select: 'name' }
+        });
 
       const incidents = clips
         .filter(c => c.student && c.exam)
@@ -87,6 +91,11 @@ router.get(
           id:        c._id,
           student:   c.student.name,
           exam:      c.exam.examNo,
+          year:      c.exam.year,
+          registrationNumber: c.student.registrationNumber,
+          subjectName:        c.exam.subject.name,
+          session:   c.exam.session,
+          semester:  c.exam.semester,
           reason:    c.reason,
           timestamp: c.createdAt
         }));
@@ -99,6 +108,48 @@ router.get(
   }
 );
 
+/**
+ * GET /api/cheats/recent?limit=5
+ * Returns the last N cheat incidents, with student reg no and subject name
+ */
+router.get(
+  '/recent',
+  protect,
+  authorize('teacher'),
+  async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit, 10) || 5;
+
+      const clips = await Cheat.find()
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        // bring in student name + registrationNumber
+        .populate('student', 'name registrationNumber')
+        // bring in examNo, semester, AND the Subject name
+        .populate({
+          path: 'exam',
+          select: 'examNo semester subject',
+          populate: { path: 'subject', select: 'name' }
+        });
+
+      const incidents = clips.map(c => ({
+        id:                 c._id,
+        name:               c.student.name,
+        registrationNumber: c.student.registrationNumber,
+        subject:            c.exam.subject?.name || '—',
+        exam:               c.exam.examNo,
+        semester:           c.exam.semester,
+        // use yyyy-mm-dd for the “Date” column
+        date:               c.createdAt.toISOString().split('T')[0]
+      }));
+
+      return res.json(incidents);
+    } catch (err) {
+      console.error('Fetch recent cheats error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 
 // ✅ Teacher streams the clip
