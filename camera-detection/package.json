@@ -1,0 +1,11 @@
+{
+  "name": "camera-detection-server",
+  "version": "1.0.0",
+  "description": "Flask YOLOv5 cheating detection server",
+  "scripts": {
+    "server": "nodemon --exec python camera_server.py"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}
