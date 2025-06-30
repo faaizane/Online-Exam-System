@@ -1541,7 +1541,340 @@
 
 
 // yeh mera full tested code hy sirf window giveexam ki exit krne pr button start test se nai
-//nai change hota hy 
+//nai change hota hy isme mobile pr screen nai ati yani mcqs nai ate
+
+
+// // src/pages/GiveExam.jsx
+// import React, { useState, useEffect, useRef, useCallback } from 'react';
+// import { useNavigate, useParams } from 'react-router-dom';
+// import { BiLoaderAlt } from 'react-icons/bi';
+
+// export default function GiveExam() {
+//   const { id: examId } = useParams();
+//   const navigate = useNavigate();
+//   const imgRef = useRef(null);
+//   const submittingRef = useRef(false);
+
+//   const [feedLoaded, setFeedLoaded] = useState(false);
+//   const [exam, setExam] = useState(null);
+//   const [answers, setAnswers] = useState({});
+//   const [timeLeft, setTimeLeft] = useState(null);
+//   const [submitted, setSubmitted] = useState(false);
+//   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+//   const [score, setScore] = useState(null);
+
+//   const API_URL = import.meta.env.VITE_API_BASE_URL;
+//   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
+
+//   // Prevent accidental close/refresh
+//   const beforeUnloadHandler = useCallback(e => {
+//     if (!submitted && !alreadySubmitted) {
+//       e.preventDefault();
+//       e.returnValue = '';
+//     }
+//   }, [submitted, alreadySubmitted]);
+
+//   // Core submit logic
+//   const handleSubmit = useCallback(async () => {
+//     if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
+//     submittingRef.current = true;
+//     setSubmitted(true);
+
+//     // remove listeners immediately
+//     window.removeEventListener('beforeunload', beforeUnloadHandler);
+//     document.removeEventListener('visibilitychange', onTabChange);
+//     window.removeEventListener('resize', onResize);
+//     window.onpopstate = null;
+
+//     // compute score
+//     const arr = exam.questions.map((_, i) => answers[i] ?? null);
+//     const raw = exam.questions.reduce(
+//       (sum, q, i) => sum + (arr[i] === q.correctAnswerIndex ? 1 : 0),
+//       0
+//     );
+//     setScore(raw);
+
+//     const token = localStorage.getItem('token');
+//     // submit answers (ignore 400 duplicate)
+//     try {
+//       const res = await fetch(`${API_URL}/api/exams/${examId}/submit`, {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//           Authorization: `Bearer ${token}`
+//         },
+//         body: JSON.stringify({ answers: arr, score: raw })
+//       });
+//       if (res.ok) {
+//         const data = await res.json();
+//         localStorage.setItem(`submission_${examId}`, data.submissionId);
+//       }
+//     } catch (e) {
+//       console.error('Submit failed', e);
+//     }
+//     // delete saved progress
+//     fetch(`${API_URL}/api/exams/${examId}/progress`, {
+//       method: 'DELETE',
+//       headers: { Authorization: `Bearer ${token}` }
+//     }).catch(() => {});
+//     // release camera
+//     fetch(`${YOLO_BACKEND_URL}/release_camera`, { method: 'POST' }).catch(() => {});
+//   }, [
+//     submitted,
+//     alreadySubmitted,
+//     exam,
+//     answers,
+//     examId,
+//     API_URL,
+//     YOLO_BACKEND_URL,
+//     beforeUnloadHandler
+//   ]);
+
+//   // Handlers for tab-change and resize
+//   const onTabChange = () => {
+//     if (!submitted && !alreadySubmitted && document.hidden) {
+//       handleSubmit();
+//     }
+//   };
+//   const onResize = () => {
+//     if (!submitted && !alreadySubmitted && window.matchMedia('(min-width:1024px)').matches) {
+//       handleSubmit();
+//     }
+//   };
+
+//   // beforeunload
+//   useEffect(() => {
+//     window.addEventListener('beforeunload', beforeUnloadHandler);
+//     return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
+//   }, [beforeUnloadHandler]);
+
+//   // unload fallback
+//   useEffect(() => {
+//     const onUnload = () => {
+//       if (!submitted && !alreadySubmitted) handleSubmit();
+//     };
+//     window.addEventListener('unload', onUnload);
+//     return () => window.removeEventListener('unload', onUnload);
+//   }, [submitted, alreadySubmitted, handleSubmit]);
+
+//   // set up tab-change & resize AFTER exam loads
+//   useEffect(() => {
+//     if (!exam || submitted || alreadySubmitted) return;
+//     document.addEventListener('visibilitychange', onTabChange);
+//     window.addEventListener('resize', onResize);
+//     return () => {
+//       document.removeEventListener('visibilitychange', onTabChange);
+//       window.removeEventListener('resize', onResize);
+//     };
+//   }, [exam, submitted, alreadySubmitted, handleSubmit]);
+
+//   // prevent back navigation
+//   useEffect(() => {
+//     window.history.pushState(null, '', window.location.href);
+//     window.onpopstate = () => {
+//       if (!submitted && !alreadySubmitted) handleSubmit();
+//     };
+//     return () => { window.onpopstate = null; };
+//   }, [submitted, alreadySubmitted, handleSubmit]);
+
+//   // load saved progress
+//   useEffect(() => {
+//     if (!examId) return;
+//     (async () => {
+//       try {
+//         const token = localStorage.getItem('token');
+//         const res = await fetch(`${API_URL}/api/exams/${examId}/progress`, {
+//           headers: { Authorization: `Bearer ${token}` }
+//         });
+//         if (res.ok) {
+//           const p = await res.json();
+//           if (p.timeLeft != null) {
+//             setAnswers(p.answers || {});
+//             setTimeLeft(p.timeLeft);
+//           }
+//         }
+//       } catch {}
+//     })();
+//   }, [examId, API_URL]);
+
+//   // fetch exam or submission
+//   useEffect(() => {
+//     if (!examId) return navigate(-1);
+//     (async () => {
+//       try {
+//         const token = localStorage.getItem('token');
+//         const res = await fetch(`${API_URL}/api/exams/${examId}/student`, {
+//           headers: { Authorization: `Bearer ${token}` }
+//         });
+//         if (!res.ok) throw new Error();
+//         const data = await res.json();
+//         if (data.alreadySubmitted) {
+//           setAlreadySubmitted(true);
+//           setSubmitted(true);
+//           setScore(data.score);
+//           setExam({ questions: data.questions || [], duration: 0 });
+//           setAnswers(data.answers || {});
+//         } else {
+//           setExam(data);
+//         }
+//       } catch {
+//         navigate(-1);
+//       }
+//     })();
+//   }, [examId, navigate]);
+
+//   // init timer
+//   useEffect(() => {
+//     if (exam && timeLeft == null && !alreadySubmitted) {
+//       setTimeLeft(exam.duration * 60);
+//     }
+//   }, [exam, timeLeft, alreadySubmitted]);
+
+//   // countdown
+//   useEffect(() => {
+//     if (timeLeft == null || submitted) return;
+//     if (timeLeft <= 0) {
+//       handleSubmit();
+//       return;
+//     }
+//     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+//     return () => clearTimeout(t);
+//   }, [timeLeft, submitted, handleSubmit]);
+
+//   // periodic save
+//   useEffect(() => {
+//     if (!submitted && exam && timeLeft != null) {
+//       const token = localStorage.getItem('token');
+//       fetch(`${API_URL}/api/exams/${examId}/progress`, {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//           Authorization: `Bearer ${token}`
+//         },
+//         body: JSON.stringify({ answers, timeLeft })
+//       });
+//     }
+//   }, [answers, timeLeft, exam, submitted, examId, API_URL]);
+
+//   // cheat poll
+//   useEffect(() => {
+//     if (exam && !submitted && !alreadySubmitted) {
+//       const token = localStorage.getItem('token');
+//       const iv = setInterval(async () => {
+//         const res = await fetch(`${API_URL}/api/cheats/me?exam=${examId}`, {
+//           headers: { Authorization: `Bearer ${token}` }
+//         });
+//         if (res.ok && (await res.json()).cheated) {
+//           handleSubmit();
+//         }
+//       }, 5000);
+//       return () => clearInterval(iv);
+//     }
+//   }, [exam, submitted, alreadySubmitted, examId, API_URL, handleSubmit]);
+
+//   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
+//   const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+//   const streamUrl = `${YOLO_BACKEND_URL}/video_feed?exam=${examId}&token=${encodeURIComponent(localStorage.getItem('token'))}`;
+
+//   return (
+//     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
+//       {/* Side panel */}
+//       <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky top-0 h-screen">
+//         <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop:'100%' }}>
+//           <img
+//             ref={imgRef}
+//             src={streamUrl}
+//             alt="Proctoring"
+//             className="absolute inset-0 w-full h-full object-cover"
+//             onLoad={()=>setFeedLoaded(true)}
+//           />
+//           {!feedLoaded && (
+//             <div className="absolute inset-0 flex items-center justify-center bg-black">
+//               <BiLoaderAlt className="animate-spin text-white text-4xl"/>
+//             </div>
+//           )}
+//         </div>
+//         <div className="text-4xl font-mono mb-2 text-center">{timeLeft!=null?fmt(timeLeft):'--:--'}</div>
+//         <div className="w-full bg-gray-200 h-2 rounded-full">
+//           <div
+//             className="bg-[#002855] h-2 rounded-full transition-all duration-500"
+//             style={{ width: exam ? `${((exam.duration*60 - (timeLeft||0))/(exam.duration*60))*100}%` : '0%' }}
+//           />
+//         </div>
+//       </div>
+//       {/* Main content */}
+//       <div className="flex-1 p-6 lg:p-12 overflow-auto">
+//         {!exam ? (
+//           <div className="text-center text-gray-500">Loading exam…</div>
+//         ) : submitted || alreadySubmitted ? (
+//           <div className="text-center">
+//             <h2 className="text-4xl font-bold text-[#002855] mb-4">Your Score</h2>
+//             <p className="text-2xl mb-6">{score} / {exam.questions.length}</p>
+//             {exam.questions.map((q,i) => (
+//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-6 max-w-2xl mx-auto text-left">
+//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
+//                 <ul className="list-disc list-inside space-y-2">
+//                   {q.options.map((opt,j) => {
+//                     const corr = j===q.correctAnswerIndex;
+//                     const cho = answers[i]===j;
+//                     return (
+//                       <li key={j} className={corr?'text-green-600':cho?'text-red-600':''}>
+//                         {opt} {corr?'✔️':cho?'❌':''}
+//                       </li>
+//                     );
+//                   })}
+//                 </ul>
+//               </div>
+//             ))}
+//           </div>
+//         ) : (
+//           <>
+//             {exam.questions.map((q,i) => (
+//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-8">
+//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
+//                 <div className="space-y-3">
+//                   {q.options.map((opt,j) => (
+//                     <label key={j} className="flex items-center space-x-3">
+//                       <input
+//                         type="radio"
+//                         checked={answers[i]===j}
+//                         onChange={()=>handleChange(i,j)}
+//                         className="accent-[#002855] h-5 w-5"
+//                       />
+//                       <span>{opt}</span>
+//                     </label>
+//                   ))}
+//                 </div>
+//               </div>
+//             ))}
+//             <div className="text-center mt-6">
+//               <button
+//                 onClick={handleSubmit}
+//                 disabled={submitted}
+//                 className={`px-8 py-3 text-lg rounded transition ${
+//                   submitted
+//                     ? 'bg-gray-400 cursor-not-allowed'
+//                     : 'bg-[#002855] hover:bg-[#001f47] text-white'
+//                 }`}
+//               >
+//                 {submitted ? 'Submitted' : 'Submit'}
+//               </button>
+//             </div>
+//           </>
+//         )}
+//       </div>
+//     </div>
+//   );
+// }
+
+
+
+
+
+
+
+
+
 
 
 // src/pages/GiveExam.jsx
@@ -1566,7 +1899,6 @@ export default function GiveExam() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
 
-  // Prevent accidental close/refresh
   const beforeUnloadHandler = useCallback(e => {
     if (!submitted && !alreadySubmitted) {
       e.preventDefault();
@@ -1574,19 +1906,15 @@ export default function GiveExam() {
     }
   }, [submitted, alreadySubmitted]);
 
-  // Core submit logic
   const handleSubmit = useCallback(async () => {
     if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
     submittingRef.current = true;
     setSubmitted(true);
 
-    // remove listeners immediately
     window.removeEventListener('beforeunload', beforeUnloadHandler);
     document.removeEventListener('visibilitychange', onTabChange);
-    window.removeEventListener('resize', onResize);
     window.onpopstate = null;
 
-    // compute score
     const arr = exam.questions.map((_, i) => answers[i] ?? null);
     const raw = exam.questions.reduce(
       (sum, q, i) => sum + (arr[i] === q.correctAnswerIndex ? 1 : 0),
@@ -1595,7 +1923,6 @@ export default function GiveExam() {
     setScore(raw);
 
     const token = localStorage.getItem('token');
-    // submit answers (ignore 400 duplicate)
     try {
       const res = await fetch(`${API_URL}/api/exams/${examId}/submit`, {
         method: 'POST',
@@ -1612,12 +1939,10 @@ export default function GiveExam() {
     } catch (e) {
       console.error('Submit failed', e);
     }
-    // delete saved progress
     fetch(`${API_URL}/api/exams/${examId}/progress`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     }).catch(() => {});
-    // release camera
     fetch(`${YOLO_BACKEND_URL}/release_camera`, { method: 'POST' }).catch(() => {});
   }, [
     submitted,
@@ -1630,25 +1955,17 @@ export default function GiveExam() {
     beforeUnloadHandler
   ]);
 
-  // Handlers for tab-change and resize
   const onTabChange = () => {
     if (!submitted && !alreadySubmitted && document.hidden) {
       handleSubmit();
     }
   };
-  const onResize = () => {
-    if (!submitted && !alreadySubmitted && window.matchMedia('(min-width:1024px)').matches) {
-      handleSubmit();
-    }
-  };
 
-  // beforeunload
   useEffect(() => {
     window.addEventListener('beforeunload', beforeUnloadHandler);
     return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
   }, [beforeUnloadHandler]);
 
-  // unload fallback
   useEffect(() => {
     const onUnload = () => {
       if (!submitted && !alreadySubmitted) handleSubmit();
@@ -1657,18 +1974,14 @@ export default function GiveExam() {
     return () => window.removeEventListener('unload', onUnload);
   }, [submitted, alreadySubmitted, handleSubmit]);
 
-  // set up tab-change & resize AFTER exam loads
   useEffect(() => {
     if (!exam || submitted || alreadySubmitted) return;
     document.addEventListener('visibilitychange', onTabChange);
-    window.addEventListener('resize', onResize);
     return () => {
       document.removeEventListener('visibilitychange', onTabChange);
-      window.removeEventListener('resize', onResize);
     };
   }, [exam, submitted, alreadySubmitted, handleSubmit]);
 
-  // prevent back navigation
   useEffect(() => {
     window.history.pushState(null, '', window.location.href);
     window.onpopstate = () => {
@@ -1677,7 +1990,6 @@ export default function GiveExam() {
     return () => { window.onpopstate = null; };
   }, [submitted, alreadySubmitted, handleSubmit]);
 
-  // load saved progress
   useEffect(() => {
     if (!examId) return;
     (async () => {
@@ -1697,7 +2009,6 @@ export default function GiveExam() {
     })();
   }, [examId, API_URL]);
 
-  // fetch exam or submission
   useEffect(() => {
     if (!examId) return navigate(-1);
     (async () => {
@@ -1723,14 +2034,12 @@ export default function GiveExam() {
     })();
   }, [examId, navigate]);
 
-  // init timer
   useEffect(() => {
     if (exam && timeLeft == null && !alreadySubmitted) {
       setTimeLeft(exam.duration * 60);
     }
   }, [exam, timeLeft, alreadySubmitted]);
 
-  // countdown
   useEffect(() => {
     if (timeLeft == null || submitted) return;
     if (timeLeft <= 0) {
@@ -1741,7 +2050,6 @@ export default function GiveExam() {
     return () => clearTimeout(t);
   }, [timeLeft, submitted, handleSubmit]);
 
-  // periodic save
   useEffect(() => {
     if (!submitted && exam && timeLeft != null) {
       const token = localStorage.getItem('token');
@@ -1756,7 +2064,6 @@ export default function GiveExam() {
     }
   }, [answers, timeLeft, exam, submitted, examId, API_URL]);
 
-  // cheat poll
   useEffect(() => {
     if (exam && !submitted && !alreadySubmitted) {
       const token = localStorage.getItem('token');
@@ -1779,7 +2086,7 @@ export default function GiveExam() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
       {/* Side panel */}
-      <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky top-0 h-screen">
+      <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
         <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop:'100%' }}>
           <img
             ref={imgRef}
