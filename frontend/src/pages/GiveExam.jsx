@@ -816,9 +816,7 @@ export default function GiveExam() {
 
   useEffect(() => {
     window.addEventListener('beforeunload', beforeUnloadHandler);
-    return () => {
-      window.removeEventListener('beforeunload', beforeUnloadHandler);
-    };
+    return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
   }, [beforeUnloadHandler]);
 
   useEffect(() => {
@@ -974,27 +972,27 @@ export default function GiveExam() {
     }
     window.onpopstate = onBack;
     return () => { window.onpopstate = null; };
-  }, []); // handleSubmit already stable
-
-  useEffect(() => {
-    function onResize() {
-      alert('Resizing is not allowed. Your exam will be submitted.');
-      handleSubmit();
-    }
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // == Updated: Desktop resize + mobile orientation-change ==
   useEffect(() => {
-    function onFsChange() {
-      if (!document.fullscreenElement) {
-        alert('You exited fullscreen—auto-submitting.');
+    function onResize() {
+      if (window.matchMedia('(min-width: 1024px)').matches) {
+        alert('⚠️ Resizing is not allowed. Your exam will be submitted.');
         handleSubmit();
       }
     }
-    document.addEventListener('fullscreenchange', onFsChange);
-    return () => document.removeEventListener('fullscreenchange', onFsChange);
-  }, []);
+    function onOrientationChange() {
+      alert('⚠️ Orientation change is not allowed. Your exam will be submitted.');
+      handleSubmit();
+    }
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onOrientationChange);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onOrientationChange);
+    };
+  }, [handleSubmit]);
 
   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
 
@@ -1054,9 +1052,7 @@ export default function GiveExam() {
 
   return (
     <>
-      {/* Make sure you have in your public/index.html: */}
-      {/* <meta name="viewport" content="width=device-width, initial-scale=1" /> */}
-
+      {/* Ensure in public/index.html: <meta name="viewport" content="width=device-width, initial-scale=1" /> */}
       <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
         {/* Side panel */}
         <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
