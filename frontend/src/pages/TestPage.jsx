@@ -646,7 +646,8 @@
 
 
 
-
+// yeh mera full tested code hy sirf window giveexam ki exit krne pr button start test se nai
+//nai change hota hy 
 
 // src/pages/TestPage.jsx
 
@@ -947,3 +948,4 @@ const DetailRow = ({ label, value }) => (
     <span>{value}</span>
   </div>
 );
+
