@@ -813,7 +813,7 @@ def gen_frames(student_id, exam_id, token_header):
                 PHONE_COUNTER     = 0
                 threading.Thread(
                     target=handle_cheat,
-                    args=(student_id, exam_id, token_header, "Object detected: cell phone"),
+                    args=(student_id, exam_id, token_header, "Cell phone"),
                     daemon=True
                 ).start()
                 continue  # skip generic this frame
@@ -831,7 +831,7 @@ def gen_frames(student_id, exam_id, token_header):
                 OBJECT_COUNTER    = 0
                 threading.Thread(
                     target=handle_cheat,
-                    args=(student_id, exam_id, token_header, f"Object detected: {lbl}"),
+                    args=(student_id, exam_id, token_header, lbl.capitalize()),
                     daemon=True
                 ).start()
 

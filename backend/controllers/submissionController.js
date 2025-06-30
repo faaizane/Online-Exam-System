@@ -1,5 +1,6 @@
 // File: backend/controllers/submissionController.js
 const Submission = require('../models/Submission');
+const Cheat = require('../models/CheatClip');
 
 /**
  * GET /api/submissions
@@ -159,26 +160,62 @@ exports.recent = async (req, res) => {
  * GET /api/exams/:examId/results (Teacher only)
  * List all student submissions for a specific exam.
  */
+// exports.resultsByExam = async (req, res) => {
+//   try {
+//     const examId = req.params.examId;
+
+//     const subs = await Submission.find({ exam: examId })
+//       .populate({
+//         path: 'student',
+//         select: 'name registrationNumber'
+//       })
+//       .lean();
+
+//     const results = subs.map(s => ({
+//       submissionId: s._id,
+//       studentName: s.student.name,
+//       registrationNumber: s.student.registrationNumber,
+//       marks: s.score,
+//       flagged: s.flagged || false
+//     }));
+
+//     res.json(results);
+//   } catch (err) {
+//     console.error('resultsByExam error:', err);
+//     res.status(500).json({ message: 'Server error fetching results' });
+//   }
+// };
+
+
 exports.resultsByExam = async (req, res) => {
   try {
     const examId = req.params.examId;
 
-    const subs = await Submission.find({ exam: examId })
-      .populate({
-        path: 'student',
-        select: 'name registrationNumber'
-      })
+    const submissions = await Submission.find({ exam: examId })
+      .populate('student', 'name registrationNumber')
       .lean();
 
-    const results = subs.map(s => ({
-      submissionId: s._id,
-      studentName: s.student.name,
-      registrationNumber: s.student.registrationNumber,
-      marks: s.score,
-      flagged: s.flagged || false
-    }));
+    const cheats = await Cheat.find({ exam: examId })
+      .populate('student', 'name registrationNumber')
+      .lean();
 
-    res.json(results);
+    const result = submissions.map(sub => {
+      const cheat = cheats.find(
+        c => c.student._id.toString() === sub.student._id.toString()
+      );
+
+      return {
+        submissionId: sub._id,
+        studentName: sub.student.name,
+        registrationNumber: sub.student.registrationNumber,
+        marks: sub.score,
+        flagged: !!cheat,
+        reason: cheat ? cheat.reason : '',
+        videoId: cheat ? cheat._id : null,
+      };
+    });
+
+    res.json(result);
   } catch (err) {
     console.error('resultsByExam error:', err);
     res.status(500).json({ message: 'Server error fetching results' });
