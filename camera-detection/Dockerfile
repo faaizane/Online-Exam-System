@@ -1,20 +1,24 @@
-FROM python:3.10-slim
+# Use lightweight Python image
+FROM python:3.12-slim
+
+# Install system dependencies for OpenCV and MediaPipe
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
 WORKDIR /app
 
-# FFmpeg install (for video encoding)
-RUN apt-get update \
- && apt-get install -y ffmpeg \
- && rm -rf /var/lib/apt/lists/*
+# Copy files into the container
+COPY . /app
 
-# Dependencies
-COPY requirements.txt .
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# App code
-COPY . .
+# Expose the port your Flask app runs on
+EXPOSE 5000
 
-# Railway pe 3000 expose karo
-EXPOSE 3000
-
-# Use Railway ka $PORT, fallback 3000 pe
-CMD ["gunicorn", "--bind", "0.0.0.0:${PORT:-3000}", "camera_server:app", "--workers", "1"]
+# Run the server
+CMD ["python", "yolo_server.py"]
