@@ -370,6 +370,24 @@ export default function SHeader({ toggleSidebar }) {
               <span>📢</span> Important Instructions
             </h2>
             {/* ... notice content unchanged ... */}
+            <div className="text-gray-700 mb-6 leading-relaxed space-y-3 text-[15px]">
+              <p>➤ Please maintain a <b>stable internet connection</b> throughout the exam.</p>
+              <p>
+                ➤ <b>Do not refresh, close, minimize, switch tabs, or open other applications during the exam.</b><br />
+                Any such action will be considered a violation and will result in the <b>automatic submission of your exam.</b>
+              </p>
+              <p>
+                ➤ <b>Your camera is mandatory for the exam.</b><br />
+                • Kindly <b>allow camera access</b>, otherwise the exam <b>will not start.</b><br />
+                • The system uses <b>face detection</b> and <b>motion tracking</b>.<br />
+                • Actions like <b>looking around frequently, turning your head, using mobile devices, or interacting with others</b> will be treated as <b>cheating</b>.<br />
+                • In such cases, your exam will be <b>automatically submitted</b> along with the <b>cheating evidence clip</b> sent to your instructor.
+              </p>
+              <p>➤ Any form of <b>suspicious activity may lead to disqualification.</b></p>
+              <p>
+                ➤ For assistance, contact: <b>exam@uetpeshawar.edu.pk</b>
+              </p>
+            </div>
             <div className="flex justify-end">
               <button
                 onClick={handleCloseNotice}
