@@ -1181,7 +1181,6 @@ export default function GiveExam() {
   const [submitted, setSubmitted] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [score, setScore] = useState(null);
-  const [warningCount, setWarningCount] = useState(0);
 
   const API_URL = import.meta.env.VITE_API_BASE_URL;
   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
@@ -1205,21 +1204,27 @@ export default function GiveExam() {
   useEffect(() => {
     const handleUnload = () => {
       if (submitted || alreadySubmitted || !exam) return;
-      const arr = exam.questions.map((_, i) => answers[i] ?? null);
-      const raw = exam.questions.reduce(
-        (s, q, i) => s + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-        0
-      );
-      navigator.sendBeacon(
-        `${API_URL}/api/exams/${examId}/submit`,
-        JSON.stringify({ answers: arr, score: raw })
-      );
+      handleSubmit();
     };
     window.addEventListener('unload', handleUnload);
     return () => {
       window.removeEventListener('unload', handleUnload);
     };
-  }, [submitted, alreadySubmitted, exam, answers, examId]);
+  }, [submitted, alreadySubmitted, exam]);
+
+  // Immediate auto-submit on first tab switch
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.hidden && !submitted && !alreadySubmitted) {
+        alert('⚠️ Tab change detected—auto-submitting now.');
+        handleSubmit();
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [submitted, alreadySubmitted]);
 
   // Load saved progress
   useEffect(() => {
@@ -1287,31 +1292,6 @@ export default function GiveExam() {
     return () => clearTimeout(t);
   }, [timeLeft, submitted]);
 
-  // Visibility change detection
-  useEffect(() => {
-    const onVis = () => {
-      if (document.hidden && !submitted && !alreadySubmitted) {
-        setWarningCount(c => c + 1);
-      }
-    };
-    onVisRef.current = onVis;
-    document.addEventListener('visibilitychange', onVis);
-    return () => {
-      document.removeEventListener('visibilitychange', onVis);
-    };
-  }, [submitted, alreadySubmitted]);
-
-  // Warning & auto-submit after multiple tab switches
-  useEffect(() => {
-    if (warningCount === 1) {
-      alert('⚠️ Warning: You left the exam—next time auto-submits.');
-    }
-    if (warningCount >= 2 && !submitted && !alreadySubmitted) {
-      alert('⚠️ Left again—auto-submitting now.');
-      handleSubmit();
-    }
-  }, [warningCount, submitted, alreadySubmitted]);
-
   // Periodically save progress
   useEffect(() => {
     if (!submitted && exam && timeLeft != null) {
@@ -1330,7 +1310,7 @@ export default function GiveExam() {
     }
   }, [answers, timeLeft, exam, submitted, examId]);
 
-  // Release camera on unload
+  // Release camera on leave
   useEffect(() => {
     const rel = () => {
       const u = `${YOLO_BACKEND_URL}/release_camera`;
@@ -1370,23 +1350,17 @@ export default function GiveExam() {
     return () => { window.onpopstate = null; };
   }, []);
 
-  // Desktop resize & mobile orientation lock
+  // Desktop resize lock (mobile scrolling won’t trigger this)
   useEffect(() => {
     function onResize() {
       if (window.matchMedia('(min-width: 1024px)').matches) {
-        alert('⚠️ Resizing is not allowed. Your exam will be submitted.');
+        alert('⚠️ Resizing is not allowed. Auto-submitting.');
         handleSubmit();
       }
     }
-    function onOrientationChange() {
-      alert('⚠️ Orientation change is not allowed. Your exam will be submitted.');
-      handleSubmit();
-    }
     window.addEventListener('resize', onResize);
-    window.addEventListener('orientationchange', onOrientationChange);
     return () => {
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('orientationchange', onOrientationChange);
     };
   }, [handleSubmit]);
 
@@ -1399,10 +1373,8 @@ export default function GiveExam() {
     submittingRef.current = true;
     setSubmitted(true);
 
-    // Remove further visibility-change warnings
-    if (onVisRef.current) {
-      document.removeEventListener('visibilitychange', onVisRef.current);
-    }
+    // Remove visibility listener so no further tab submissions
+    document.removeEventListener('visibilitychange', onVisRef.current);
 
     const arr = exam.questions.map((_, i) => answers[i] ?? null);
     const raw = exam.questions.reduce(
@@ -1457,7 +1429,7 @@ export default function GiveExam() {
 
   return (
     <>
-      {/* Make sure your public/index.html includes: */}
+      {/* Ensure public/index.html includes: */}
       {/* <meta name="viewport" content="width=device-width, initial-scale=1" /> */}
 
       <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
