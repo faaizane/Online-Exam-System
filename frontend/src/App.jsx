@@ -320,7 +320,7 @@ import {
   Navigate
 } from 'react-router-dom';
 
-import PrivateRoute from './components/PrivateRoute';
+import PrivateRoute from './components/Privateroute.jsx';
 
 // Auth Pages
 import SLogin from './pages/SLogin';
