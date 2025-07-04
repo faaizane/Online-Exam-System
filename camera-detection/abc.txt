@@ -1,0 +1,182 @@
+# absl-py
+# attrs
+# blinker
+# certifi
+# cffi
+# charset-normalizer
+# click
+# colorama
+# contourpy
+# cycler
+# filelock
+# flask
+# flask-cors
+# flatbuffers
+# fonttools
+# fsspec
+# gitdb
+# GitPython
+# idna
+# importlib-metadata
+# importlib-resources
+# itsdangerous
+# jax
+# jaxlib
+# jinja2
+# kiwisolver
+# MarkupSafe
+# matplotlib
+# mediapipe
+# ml-dtypes
+# mpmath
+# networkx
+# numpy
+# opencv-contrib-python
+# opencv-python
+# opt-einsum
+# packaging
+# pandas
+# pillow
+# protobuf
+# psutil
+# py-cpuinfo
+# pycparser
+# PyJWT
+# pyparsing
+# python-dateutil
+# python-dotenv
+# pytz
+# PyYAML
+# requests
+# scipy
+# seaborn
+# sentencepiece
+# six
+# smmap
+# sounddevice
+# sympy
+# torch
+# torchaudio
+# torchvision
+# tqdm
+# typing-extensions
+# tzdata
+# ultralytics
+# ultralytics-thop
+# urllib3
+# werkzeug
+# zipp
+
+
+
+absl-py
+attrs
+blinker
+certifi
+cffi
+charset-normalizer
+click
+colorama
+contourpy
+cycler
+filelock
+flask
+flask-cors
+flatbuffers
+fonttools
+fsspec
+gitdb
+GitPython
+idna
+importlib-metadata
+importlib-resources
+itsdangerous
+jax
+jaxlib
+jinja2
+kiwisolver
+MarkupSafe
+matplotlib
+mediapipe
+ml-dtypes
+mpmath
+networkx
+numpy
+opencv-contrib-python
+opt-einsum
+packaging
+pandas
+pillow
+protobuf
+psutil
+py-cpuinfo
+pycparser
+PyJWT
+pyparsing
+python-dateutil
+python-dotenv
+pytz
+PyYAML
+requests
+scipy
+seaborn
+sentencepiece
+six
+smmap
+sounddevice
+sympy
+torch
+torchaudio
+torchvision
+tqdm
+typing-extensions
+tzdata
+ultralytics
+ultralytics-thop
+urllib3
+werkzeug
+zipp
+
+setuptools>=70.0.0
+flask==3.1.1
+flask-cors==6.0.1
+python-dotenv==1.1.1
+opencv-python==4.11.0.86
+numpy==1.26.3
+mediapipe==0.10.21
+
+ultralytics==8.3.156
+torch==2.7.1+cpu
+torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+opencv-python
+ultralytics-thop==2.0.14
+requests==2.32.4 
+imageio==2.37.0 
+imageio-ffmpeg==0.6.0 
+PyJWT==2.10.1
+seaborn
+
+opencv-python==4.11.0.86
+
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.7.1
+torchaudio==2.7.1
+torchvision==0.22.1
+
+setuptools>=70.0.0
+flask==3.1.1
+flask-cors==6.0.1
+python-dotenv==1.1.1
+opencv-python==4.11.0.86
+numpy==1.26.3
+mediapipe==0.10.21
+
+ultralytics==8.3.156
+ultralytics-thop==2.0.14
+requests==2.32.4 
+imageio==2.37.0 
+imageio-ffmpeg==0.6.0 
+PyJWT==2.10.1
+seaborn==0.13.2

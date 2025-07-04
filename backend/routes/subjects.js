@@ -21,20 +21,20 @@ router.post(
   subjectController.createSubject
 );
 
+// GET students of a specific subject (MOVED BEFORE /:id)
+router.get(
+  '/:id/students',
+  protect,
+  authorize('teacher'),
+  subjectController.getSubjectStudents
+);
+
 // GET a single subject (so front-end can read its name & semester)
 router.get(
   '/:id',
   protect,
   authorize('teacher'),
   subjectController.getSubjectById
-);
-
-// GET students for one subject
-router.get(
-  '/:id/students',
-  protect,
-  authorize('teacher'),
-  subjectController.getSubjectStudents
 );
 
 // ADD a single student by registrationNumber

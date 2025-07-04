@@ -73,20 +73,29 @@ exports.createSubject = async (req, res) => {
   }
 };
 
-
 // GET /api/subjects/:id/students
 exports.getSubjectStudents = async (req, res) => {
   try {
-    const sub = await Subject.findById(req.params.id)
-      .populate({
-        path: 'students',
-        match: { role: 'student' },
-        select: 'name email registrationNumber semester section department',
-        options: { sort: { name: 1 } }
-      })
+    const subjectId = req.params.id;
+    
+    // Find subject and populate students with all required fields
+    const subject = await Subject.findById(subjectId)
+      .populate('students', 'name registrationNumber semester section department')
       .lean();
-    if (!sub) return res.status(404).json({ message: 'Subject not found' });
-    res.json(sub.students);
+    
+    if (!subject) {
+      return res.status(404).json({ message: 'Subject not found' });
+    }
+    
+    // Check if teacher owns this subject
+    if (subject.teacher.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Not authorized to view this subject students' });
+    }
+    
+    res.json({
+      success: true,
+      students: subject.students || []
+    });
   } catch (err) {
     console.error('getSubjectStudents error:', err);
     res.status(500).json({ message: 'Server error fetching students' });

@@ -1,1883 +1,4 @@
-// // src/pages/GiveExam.jsx
-// import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import { useNavigate, useParams } from 'react-router-dom';
-// import { BiLoaderAlt } from 'react-icons/bi';
 
-// export default function GiveExam() {
-//   const { id: examId } = useParams();
-//   const navigate       = useNavigate();
-//   const imgRef         = useRef(null);
-//   const submittingRef  = useRef(false);
-
-//   const [feedLoaded, setFeedLoaded]             = useState(false);
-//   const [exam, setExam]                         = useState(null);
-//   const [answers, setAnswers]                   = useState({});
-//   const [timeLeft, setTimeLeft]                 = useState(null);
-//   const [submitted, setSubmitted]               = useState(false);
-//   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-//   const [score, setScore]                       = useState(null);
-//   const [warningCount, setWarningCount]         = useState(0);
-
-//   const API_URL          = 'http://localhost:5000';
-//   const YOLO_BACKEND_URL = 'http://127.0.0.1:5001';
-
-//   // stable unload handler
-//   const beforeUnloadHandler = useCallback((e) => {
-//     if (!submitted && !alreadySubmitted) {
-//       e.preventDefault();
-//       e.returnValue = 'Closing this window will auto-submit your exam.';
-//     }
-//   }, [submitted, alreadySubmitted]);
-
-//   // register beforeunload once
-//   useEffect(() => {
-//     window.addEventListener('beforeunload', beforeUnloadHandler);
-//     return () => {
-//       window.removeEventListener('beforeunload', beforeUnloadHandler);
-//     };
-//   }, [beforeUnloadHandler]);
-
-//   // auto-submit via Beacon on actual unload
-//   useEffect(() => {
-//     const handleUnload = () => {
-//       if (submitted || alreadySubmitted || !exam) return;
-//       const arr = exam.questions.map((_, i) =>
-//         answers.hasOwnProperty(i) ? answers[i] : null
-//       );
-//       const raw = exam.questions.reduce(
-//         (s, q, i) => s + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-//         0
-//       );
-//       navigator.sendBeacon(
-//         `${API_URL}/api/exams/${examId}/submit`,
-//         JSON.stringify({ answers: arr, score: raw })
-//       );
-//     };
-//     window.addEventListener('unload', handleUnload);
-//     return () => window.removeEventListener('unload', handleUnload);
-//   }, [submitted, alreadySubmitted, exam, answers, examId]);
-
-//   // 1) restore progress
-//   useEffect(() => {
-//     if (!examId) return;
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/progress`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok) {
-//           const p = await res.json();
-//           if (p.timeLeft != null) {
-//             setAnswers(p.answers || {});
-//             setTimeLeft(p.timeLeft);
-//           }
-//         }
-//       } catch {}
-//     })();
-//   }, [examId]);
-
-//   // 2) fetch exam or past submission
-//   useEffect(() => {
-//     if (!examId) return navigate(-1);
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/student`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (!res.ok) throw new Error();
-//         const data = await res.json();
-//         if (data.alreadySubmitted) {
-//           setAlreadySubmitted(true);
-//           setSubmitted(true);
-//           setScore(data.score);
-//           setExam({ questions: data.questions || [], duration: 0 });
-//           setAnswers(data.answers || {});
-//         } else {
-//           setExam(data);
-//         }
-//       } catch {
-//         navigate(-1);
-//       }
-//     })();
-//   }, [examId, navigate]);
-
-//   // 3) init timer
-//   useEffect(() => {
-//     if (exam && timeLeft == null && !alreadySubmitted) {
-//       setTimeLeft(exam.duration * 60);
-//     }
-//   }, [exam, timeLeft, alreadySubmitted]);
-
-//   // 4) countdown
-//   useEffect(() => {
-//     if (timeLeft == null || submitted) return;
-//     if (timeLeft <= 0) {
-//       handleSubmit();
-//       return;
-//     }
-//     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-//     return () => clearTimeout(t);
-//   }, [timeLeft, submitted]);
-
-//   // 5) tab-switch warnings
-//   useEffect(() => {
-//     const onVis = () => {
-//       if (document.hidden && !submitted && !alreadySubmitted) {
-//         setWarningCount(c => c + 1);
-//       }
-//     };
-//     document.addEventListener('visibilitychange', onVis);
-//     return () => document.removeEventListener('visibilitychange', onVis);
-//   }, [submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     if (warningCount === 1) {
-//       alert('⚠️ Warning: You left the exam—next time auto-submits.');
-//     }
-//     if (warningCount >= 2 && !submitted && !alreadySubmitted) {
-//       alert('⚠️ Left again—auto-submitting now.');
-//       handleSubmit();
-//     }
-//   }, [warningCount, submitted, alreadySubmitted]);
-
-//   // 6) persist progress
-//   useEffect(() => {
-//     if (!submitted && exam && timeLeft != null) {
-//       const token = localStorage.getItem('token');
-//       fetch(
-//         `${API_URL}/api/exams/${examId}/progress`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`
-//           },
-//           body: JSON.stringify({ answers, timeLeft })
-//         }
-//       );
-//     }
-//   }, [answers, timeLeft, exam, submitted, examId]);
-
-//   // 7) release camera
-//   useEffect(() => {
-//     const rel = () => {
-//       const u = `${YOLO_BACKEND_URL}/release_camera`;
-//       if (navigator.sendBeacon) navigator.sendBeacon(u);
-//       else fetch(u, { method:'POST', mode:'no-cors' });
-//     };
-//     window.addEventListener('beforeunload', rel);
-//     return () => window.removeEventListener('beforeunload', rel);
-//   }, []);
-
-//   // 8) cheat polling
-//   useEffect(() => {
-//     if (exam && !submitted && !alreadySubmitted) {
-//       const token = localStorage.getItem('token');
-//       const iv = setInterval(async () => {
-//         const res = await fetch(
-//           `${API_URL}/api/cheats/me?exam=${examId}`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok && (await res.json()).cheated) {
-//           alert('⚠️ Cheating detected—auto-submitting!');
-//           handleSubmit();
-//         }
-//       }, 5000);
-//       return () => clearInterval(iv);
-//     }
-//   }, [exam, submitted, alreadySubmitted, examId]);
-
-//   // // 9) fullscreen + back
-//   // useEffect(() => {
-//   //   document.documentElement.requestFullscreen().catch(()=>{});
-//   //   window.history.pushState(null, '', window.location.href);
-//   //   window.onpopstate = () => {
-//   //     alert('Cannot go back—auto-submitting.');
-//   //     handleSubmit();
-//   //   };
-//   //   return () => {
-//   //     window.onpopstate = null;
-//   //   };
-//   // }, []);
-
-//   // // 10) resize
-//   // const resizeHandled = useRef(false);
-//   // useEffect(() => {
-//   //   const onResize = () => {
-//   //     if (resizeHandled.current) return;
-//   //     resizeHandled.current = true;
-//   //     alert('Resizing is not allowed. Your exam will be submitted.');
-//   //     handleSubmit();
-//   //   };
-//   //   window.addEventListener('resize', onResize);
-//   //   return () => window.removeEventListener('resize', onResize);
-//   // }, []);
-
-//   // inside GiveExam()
-
-// // 9) Prevent back‐button and auto‐submit on back
-// useEffect(() => {
-//   window.history.pushState(null, '', window.location.href);
-//   function onBack() {
-//     alert('Cannot go back—auto-submitting.');
-//     handleSubmit();
-//   }
-//   window.onpopstate = onBack;
-//   return () => { window.onpopstate = null; };
-// }, [handleSubmit]);
-
-// // 10) Auto‐submit on resize
-// useEffect(() => {
-//   function onResize() {
-//     alert('Resizing is not allowed. Your exam will be submitted.');
-//     handleSubmit();
-//   }
-//   window.addEventListener('resize', onResize);
-//   return () => window.removeEventListener('resize', onResize);
-// }, [handleSubmit]);
-
-// // 11) Auto‐submit if fullscreen ever exits (for browsers that actually enter it)
-// useEffect(() => {
-//   function onFsChange() {
-//     if (!document.fullscreenElement) {
-//       alert('You exited fullscreen—auto-submitting.');
-//       handleSubmit();
-//     }
-//   }
-//   document.addEventListener('fullscreenchange', onFsChange);
-//   return () => document.removeEventListener('fullscreenchange', onFsChange);
-// }, [handleSubmit]);
-
-  
-
-//   // select answer
-//   const handleChange = (i,j) => setAnswers(a => ({ ...a, [i]: j }));
-
-//   // submit exam
-//   async function handleSubmit() {
-//     if (submittingRef.current || submitted || alreadySubmitted || !exam)
-//       return;
-//     submittingRef.current = true;
-//     setSubmitted(true);
-
-//     const arr = exam.questions.map((_,i)=>answers[i] ?? null);
-//     const raw = exam.questions.reduce(
-//       (s,q,i)=>s + (arr[i]===q.correctAnswerIndex ? 1:0),
-//       0
-//     );
-//     setScore(raw);
-
-//     try {
-//       const token = localStorage.getItem('token');
-//       const res = await fetch(
-//         `${API_URL}/api/exams/${examId}/submit`,
-//         {
-//           method:'POST',
-//           headers:{
-//             'Content-Type':'application/json',
-//             Authorization:`Bearer ${token}`
-//           },
-//           body:JSON.stringify({ answers:arr, score:raw })
-//         }
-//       );
-//       if (!res.ok) throw new Error();
-
-//             // ←── add this so TestPage button flips immediately
-//       const data = await res.json();
-//       localStorage.setItem(`submission_${examId}`, data.submissionId);
-
-//       // remove unload warning
-//       window.removeEventListener('beforeunload', beforeUnloadHandler);
-//       window.onpopstate = null;
-//       document.exitFullscreen?.();
-
-//       await fetch(`${API_URL}/api/exams/${examId}/progress`, {
-//         method:'DELETE',
-//         headers:{ Authorization:`Bearer ${token}` }
-//       });
-//       await fetch(`${YOLO_BACKEND_URL}/release_camera`, {
-//         method:'POST'
-//       });
-//     } catch {
-//       alert('Submission failed—retry.');
-//       submittingRef.current = false;
-//       setSubmitted(false);
-//     }
-//   }
-
-//   // format mm:ss
-//   const fmt = s => {
-//     const m = String(Math.floor(s/60)).padStart(2,'0');
-//     const sec = String(s%60).padStart(2,'0');
-//     return `${m}:${sec}`;
-//   };
-
-//   const streamUrl = `${YOLO_BACKEND_URL}/video_feed?exam=${examId}&token=${encodeURIComponent(localStorage.getItem('token'))}`;
-
-//   return (
-//     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
-//       {/* Sidebar */}
-//       <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky top-0 h-screen">
-//         <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop:'100%' }}>
-//           <img
-//             ref={imgRef}
-//             src={streamUrl}
-//             alt="Proctoring"
-//             className="absolute top-0 left-0 w-full h-full object-cover"
-//             onLoad={()=>setFeedLoaded(true)}
-//           />
-//           {!feedLoaded && (
-//             <div className="absolute inset-0 flex items-center justify-center bg-black">
-//               <BiLoaderAlt className="animate-spin text-white text-4xl"/>
-//             </div>
-//           )}
-//         </div>
-//         <div className="text-4xl font-mono mb-2 text-center">
-//           {timeLeft!=null ? fmt(timeLeft) : '--:--'}
-//         </div>
-//         <div className="w-full bg-gray-200 h-2 rounded-full">
-//           <div
-//             className="bg-[#002855] h-2 rounded-full transition-all duration-500"
-//             style={{
-//               width: exam
-//                 ? `${((exam.duration*60 - (timeLeft||0)) / (exam.duration*60)) * 100}%`
-//                 : '0%'
-//             }}
-//           />
-//         </div>
-//       </div>
-
-//       {/* Main */}
-//       <div className="flex-1 p-6 lg:p-12 overflow-auto">
-//         {!exam ? (
-//           <div className="text-center text-gray-500">Loading exam…</div>
-//         ) : submitted || alreadySubmitted ? (
-//           <div className="text-center">
-//             <h2 className="text-4xl font-bold text-[#002855] mb-4">Your Score</h2>
-//             <p className="text-2xl mb-6">{score} / {exam.questions.length}</p>
-//             {exam.questions.map((q,i) => (
-//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-6 max-w-2xl mx-auto text-left">
-//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
-//                 <ul className="list-disc list-inside space-y-2">
-//                   {q.options.map((opt,j) => {
-//                     const corr = j === q.correctAnswerIndex;
-//                     const cho  = answers[i] === j;
-//                     return (
-//                       <li key={j} className={corr ? 'text-green-600' : cho ? 'text-red-600' : ''}>
-//                         {opt} {corr ? '✔️' : cho ? '❌' : ''}
-//                       </li>
-//                     );
-//                   })}
-//                 </ul>
-//               </div>
-//             ))}
-//           </div>
-//         ) : (
-//           <>
-//             {exam.questions.map((q,i) => (
-//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-8">
-//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
-//                 <div className="space-y-3">
-//                   {q.options.map((opt,j) => (
-//                     <label key={j} className="flex items-center space-x-3">
-//                       <input
-//                         type="radio"
-//                         checked={answers[i] === j}
-//                         onChange={() => handleChange(i,j)}
-//                         className="accent-[#002855] h-5 w-5"
-//                       />
-//                       <span>{opt}</span>
-//                     </label>
-//                   ))}
-//                 </div>
-//               </div>
-//             ))}
-//             <div className="text-center mt-6">
-//               <button
-//                 onClick={handleSubmit}
-//                 disabled={submitted}
-//                 className={`px-8 py-3 text-lg rounded transition ${
-//                   submitted ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#002855] hover:bg-[#001f47] text-white'
-//                 }`}
-//               >
-//                 {submitted ? 'Submitted' : 'Submit'}
-//               </button>
-//             </div>
-//           </>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-// /// with env variables
-
-// // src/pages/GiveExam.jsx
-// import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import { useNavigate, useParams } from 'react-router-dom';
-// import { BiLoaderAlt } from 'react-icons/bi';
-
-// export default function GiveExam() {
-//   const { id: examId } = useParams();
-//   const navigate = useNavigate();
-//   const imgRef = useRef(null);
-//   const submittingRef = useRef(false);
-
-//   const [feedLoaded, setFeedLoaded] = useState(false);
-//   const [exam, setExam] = useState(null);
-//   const [answers, setAnswers] = useState({});
-//   const [timeLeft, setTimeLeft] = useState(null);
-//   const [submitted, setSubmitted] = useState(false);
-//   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-//   const [score, setScore] = useState(null);
-//   const [warningCount, setWarningCount] = useState(0);
-
-//   const API_URL = import.meta.env.VITE_API_BASE_URL;
-//   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
-
-//   const beforeUnloadHandler = useCallback((e) => {
-//     if (!submitted && !alreadySubmitted) {
-//       e.preventDefault();
-//       e.returnValue = 'Closing this window will auto-submit your exam.';
-//     }
-//   }, [submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     window.addEventListener('beforeunload', beforeUnloadHandler);
-//     return () => {
-//       window.removeEventListener('beforeunload', beforeUnloadHandler);
-//     };
-//   }, [beforeUnloadHandler]);
-
-//   useEffect(() => {
-//     const handleUnload = () => {
-//       if (submitted || alreadySubmitted || !exam) return;
-//       const arr = exam.questions.map((_, i) =>
-//         answers.hasOwnProperty(i) ? answers[i] : null
-//       );
-//       const raw = exam.questions.reduce(
-//         (s, q, i) => s + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-//         0
-//       );
-//       navigator.sendBeacon(
-//         `${API_URL}/api/exams/${examId}/submit`,
-//         JSON.stringify({ answers: arr, score: raw })
-//       );
-//     };
-//     window.addEventListener('unload', handleUnload);
-//     return () => window.removeEventListener('unload', handleUnload);
-//   }, [submitted, alreadySubmitted, exam, answers, examId]);
-
-//   useEffect(() => {
-//     if (!examId) return;
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/progress`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok) {
-//           const p = await res.json();
-//           if (p.timeLeft != null) {
-//             setAnswers(p.answers || {});
-//             setTimeLeft(p.timeLeft);
-//           }
-//         }
-//       } catch {}
-//     })();
-//   }, [examId]);
-
-//   useEffect(() => {
-//     if (!examId) return navigate(-1);
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/student`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (!res.ok) throw new Error();
-//         const data = await res.json();
-//         if (data.alreadySubmitted) {
-//           setAlreadySubmitted(true);
-//           setSubmitted(true);
-//           setScore(data.score);
-//           setExam({ questions: data.questions || [], duration: 0 });
-//           setAnswers(data.answers || {});
-//         } else {
-//           setExam(data);
-//         }
-//       } catch {
-//         navigate(-1);
-//       }
-//     })();
-//   }, [examId, navigate]);
-
-//   useEffect(() => {
-//     if (exam && timeLeft == null && !alreadySubmitted) {
-//       setTimeLeft(exam.duration * 60);
-//     }
-//   }, [exam, timeLeft, alreadySubmitted]);
-
-//   useEffect(() => {
-//     if (timeLeft == null || submitted) return;
-//     if (timeLeft <= 0) {
-//       handleSubmit();
-//       return;
-//     }
-//     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-//     return () => clearTimeout(t);
-//   }, [timeLeft, submitted]);
-
-//   useEffect(() => {
-//     const onVis = () => {
-//       if (document.hidden && !submitted && !alreadySubmitted) {
-//         setWarningCount(c => c + 1);
-//       }
-//     };
-//     document.addEventListener('visibilitychange', onVis);
-//     return () => document.removeEventListener('visibilitychange', onVis);
-//   }, [submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     if (warningCount === 1) {
-//       alert('⚠️ Warning: You left the exam—next time auto-submits.');
-//     }
-//     if (warningCount >= 2 && !submitted && !alreadySubmitted) {
-//       alert('⚠️ Left again—auto-submitting now.');
-//       handleSubmit();
-//     }
-//   }, [warningCount, submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     if (!submitted && exam && timeLeft != null) {
-//       const token = localStorage.getItem('token');
-//       fetch(
-//         `${API_URL}/api/exams/${examId}/progress`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`
-//           },
-//           body: JSON.stringify({ answers, timeLeft })
-//         }
-//       );
-//     }
-//   }, [answers, timeLeft, exam, submitted, examId]);
-
-//   useEffect(() => {
-//     const rel = () => {
-//       const u = `${YOLO_BACKEND_URL}/release_camera`;
-//       if (navigator.sendBeacon) navigator.sendBeacon(u);
-//       else fetch(u, { method: 'POST', mode: 'no-cors' });
-//     };
-//     window.addEventListener('beforeunload', rel);
-//     return () => window.removeEventListener('beforeunload', rel);
-//   }, []);
-
-//   useEffect(() => {
-//     if (exam && !submitted && !alreadySubmitted) {
-//       const token = localStorage.getItem('token');
-//       const iv = setInterval(async () => {
-//         const res = await fetch(
-//           `${API_URL}/api/cheats/me?exam=${examId}`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok && (await res.json()).cheated) {
-//           alert('⚠️ Cheating detected—auto-submitting!');
-//           handleSubmit();
-//         }
-//       }, 5000);
-//       return () => clearInterval(iv);
-//     }
-//   }, [exam, submitted, alreadySubmitted, examId]);
-
-//   useEffect(() => {
-//     window.history.pushState(null, '', window.location.href);
-//     function onBack() {
-//       alert('Cannot go back—auto-submitting.');
-//       handleSubmit();
-//     }
-//     window.onpopstate = onBack;
-//     return () => { window.onpopstate = null; };
-//   }, [handleSubmit]);
-
-//   useEffect(() => {
-//     function onResize() {
-//       alert('Resizing is not allowed. Your exam will be submitted.');
-//       handleSubmit();
-//     }
-//     window.addEventListener('resize', onResize);
-//     return () => window.removeEventListener('resize', onResize);
-//   }, [handleSubmit]);
-
-//   useEffect(() => {
-//     function onFsChange() {
-//       if (!document.fullscreenElement) {
-//         alert('You exited fullscreen—auto-submitting.');
-//         handleSubmit();
-//       }
-//     }
-//     document.addEventListener('fullscreenchange', onFsChange);
-//     return () => document.removeEventListener('fullscreenchange', onFsChange);
-//   }, [handleSubmit]);
-
-//   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
-
-//   async function handleSubmit() {
-//     if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
-//     submittingRef.current = true;
-//     setSubmitted(true);
-
-//     const arr = exam.questions.map((_, i) => answers[i] ?? null);
-//     const raw = exam.questions.reduce(
-//       (s, q, i) => s + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-//       0
-//     );
-//     setScore(raw);
-
-//     try {
-//       const token = localStorage.getItem('token');
-//       const res = await fetch(
-//         `${API_URL}/api/exams/${examId}/submit`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`
-//           },
-//           body: JSON.stringify({ answers: arr, score: raw })
-//         }
-//       );
-//       if (!res.ok) throw new Error();
-
-//       const data = await res.json();
-//       localStorage.setItem(`submission_${examId}`, data.submissionId);
-
-//       window.removeEventListener('beforeunload', beforeUnloadHandler);
-//       window.onpopstate = null;
-//       document.exitFullscreen?.();
-
-//       await fetch(`${API_URL}/api/exams/${examId}/progress`, {
-//         method: 'DELETE',
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-//       await fetch(`${YOLO_BACKEND_URL}/release_camera`, { method: 'POST' });
-//     } catch {
-//       alert('Submission failed—retry.');
-//       submittingRef.current = false;
-//       setSubmitted(false);
-//     }
-//   }
-
-//   const fmt = s => {
-//     const m = String(Math.floor(s / 60)).padStart(2, '0');
-//     const sec = String(s % 60).padStart(2, '0');
-//     return `${m}:${sec}`;
-//   };
-
-//   const streamUrl = `${YOLO_BACKEND_URL}/video_feed?exam=${examId}&token=${encodeURIComponent(localStorage.getItem('token'))}`;
-
-//   return (
-//     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
-//       <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky top-0 h-screen">
-//         <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop: '100%' }}>
-//           <img
-//             ref={imgRef}
-//             src={streamUrl}
-//             alt="Proctoring"
-//             className="absolute top-0 left-0 w-full h-full object-cover"
-//             onLoad={() => setFeedLoaded(true)}
-//           />
-//           {!feedLoaded && (
-//             <div className="absolute inset-0 flex items-center justify-center bg-black">
-//               <BiLoaderAlt className="animate-spin text-white text-4xl" />
-//             </div>
-//           )}
-//         </div>
-//         <div className="text-4xl font-mono mb-2 text-center">
-//           {timeLeft != null ? fmt(timeLeft) : '--:--'}
-//         </div>
-//         <div className="w-full bg-gray-200 h-2 rounded-full">
-//           <div
-//             className="bg-[#002855] h-2 rounded-full transition-all duration-500"
-//             style={{
-//               width: exam
-//                 ? `${((exam.duration * 60 - (timeLeft || 0)) / (exam.duration * 60)) * 100}%`
-//                 : '0%'
-//             }}
-//           />
-//         </div>
-//       </div>
-
-//       <div className="flex-1 p-6 lg:p-12 overflow-auto">
-//         {!exam ? (
-//           <div className="text-center text-gray-500">Loading exam…</div>
-//         ) : submitted || alreadySubmitted ? (
-//           <div className="text-center">
-//             <h2 className="text-4xl font-bold text-[#002855] mb-4">Your Score</h2>
-//             <p className="text-2xl mb-6">{score} / {exam.questions.length}</p>
-//             {exam.questions.map((q, i) => (
-//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-6 max-w-2xl mx-auto text-left">
-//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i + 1}. {q.questionText}</h3>
-//                 <ul className="list-disc list-inside space-y-2">
-//                   {q.options.map((opt, j) => {
-//                     const corr = j === q.correctAnswerIndex;
-//                     const cho = answers[i] === j;
-//                     return (
-//                       <li key={j} className={corr ? 'text-green-600' : cho ? 'text-red-600' : ''}>
-//                         {opt} {corr ? '✔️' : cho ? '❌' : ''}
-//                       </li>
-//                     );
-//                   })}
-//                 </ul>
-//               </div>
-//             ))}
-//           </div>
-//         ) : (
-//           <>
-//             {exam.questions.map((q, i) => (
-//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-8">
-//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i + 1}. {q.questionText}</h3>
-//                 <div className="space-y-3">
-//                   {q.options.map((opt, j) => (
-//                     <label key={j} className="flex items-center space-x-3">
-//                       <input
-//                         type="radio"
-//                         checked={answers[i] === j}
-//                         onChange={() => handleChange(i, j)}
-//                         className="accent-[#002855] h-5 w-5"
-//                       />
-//                       <span>{opt}</span>
-//                     </label>
-//                   ))}
-//                 </div>
-//               </div>
-//             ))}
-//             <div className="text-center mt-6">
-//               <button
-//                 onClick={handleSubmit}
-//                 disabled={submitted}
-//                 className={`px-8 py-3 text-lg rounded transition ${submitted ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#002855] hover:bg-[#001f47] text-white'}`}
-//               >
-//                 {submitted ? 'Submitted' : 'Submit'}
-//               </button>
-//             </div>
-//           </>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
-// // src/pages/GiveExam.jsx
-// import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import { useNavigate, useParams } from 'react-router-dom';
-// import { BiLoaderAlt } from 'react-icons/bi';
-
-// export default function GiveExam() {
-//   const { id: examId } = useParams();
-//   const navigate = useNavigate();
-//   const imgRef = useRef(null);
-//   const submittingRef = useRef(false);
-
-//   const [feedLoaded, setFeedLoaded] = useState(false);
-//   const [exam, setExam] = useState(null);
-//   const [answers, setAnswers] = useState({});
-//   const [timeLeft, setTimeLeft] = useState(null);
-//   const [submitted, setSubmitted] = useState(false);
-//   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-//   const [score, setScore] = useState(null);
-//   const [warningCount, setWarningCount] = useState(0);
-
-//   const API_URL = import.meta.env.VITE_API_BASE_URL;
-//   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
-
-//   const beforeUnloadHandler = useCallback((e) => {
-//     if (!submitted && !alreadySubmitted) {
-//       e.preventDefault();
-//       e.returnValue = 'Closing this window will auto-submit your exam.';
-//     }
-//   }, [submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     window.addEventListener('beforeunload', beforeUnloadHandler);
-//     return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
-//   }, [beforeUnloadHandler]);
-
-//   useEffect(() => {
-//     const handleUnload = () => {
-//       if (submitted || alreadySubmitted || !exam) return;
-//       const arr = exam.questions.map((_, i) =>
-//         answers.hasOwnProperty(i) ? answers[i] : null
-//       );
-//       const raw = exam.questions.reduce(
-//         (s, q, i) => s + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-//         0
-//       );
-//       navigator.sendBeacon(
-//         `${API_URL}/api/exams/${examId}/submit`,
-//         JSON.stringify({ answers: arr, score: raw })
-//       );
-//     };
-//     window.addEventListener('unload', handleUnload);
-//     return () => window.removeEventListener('unload', handleUnload);
-//   }, [submitted, alreadySubmitted, exam, answers, examId]);
-
-//   useEffect(() => {
-//     if (!examId) return;
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/progress`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok) {
-//           const p = await res.json();
-//           if (p.timeLeft != null) {
-//             setAnswers(p.answers || {});
-//             setTimeLeft(p.timeLeft);
-//           }
-//         }
-//       } catch {}
-//     })();
-//   }, [examId]);
-
-//   useEffect(() => {
-//     if (!examId) return navigate(-1);
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/student`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (!res.ok) throw new Error();
-//         const data = await res.json();
-//         if (data.alreadySubmitted) {
-//           setAlreadySubmitted(true);
-//           setSubmitted(true);
-//           setScore(data.score);
-//           setExam({ questions: data.questions || [], duration: 0 });
-//           setAnswers(data.answers || {});
-//         } else {
-//           setExam(data);
-//         }
-//       } catch {
-//         navigate(-1);
-//       }
-//     })();
-//   }, [examId, navigate]);
-
-//   useEffect(() => {
-//     if (exam && timeLeft == null && !alreadySubmitted) {
-//       setTimeLeft(exam.duration * 60);
-//     }
-//   }, [exam, timeLeft, alreadySubmitted]);
-
-//   useEffect(() => {
-//     if (timeLeft == null || submitted) return;
-//     if (timeLeft <= 0) {
-//       handleSubmit();
-//       return;
-//     }
-//     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-//     return () => clearTimeout(t);
-//   }, [timeLeft, submitted]);
-
-//   useEffect(() => {
-//     const onVis = () => {
-//       if (document.hidden && !submitted && !alreadySubmitted) {
-//         setWarningCount(c => c + 1);
-//       }
-//     };
-//     document.addEventListener('visibilitychange', onVis);
-//     return () => document.removeEventListener('visibilitychange', onVis);
-//   }, [submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     if (warningCount === 1) {
-//       alert('⚠️ Warning: You left the exam—next time auto-submits.');
-//     }
-//     if (warningCount >= 2 && !submitted && !alreadySubmitted) {
-//       alert('⚠️ Left again—auto-submitting now.');
-//       handleSubmit();
-//     }
-//   }, [warningCount, submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     if (!submitted && exam && timeLeft != null) {
-//       const token = localStorage.getItem('token');
-//       fetch(
-//         `${API_URL}/api/exams/${examId}/progress`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`
-//           },
-//           body: JSON.stringify({ answers, timeLeft })
-//         }
-//       );
-//     }
-//   }, [answers, timeLeft, exam, submitted, examId]);
-
-//   useEffect(() => {
-//     const rel = () => {
-//       const u = `${YOLO_BACKEND_URL}/release_camera`;
-//       if (navigator.sendBeacon) navigator.sendBeacon(u);
-//       else fetch(u, { method: 'POST', mode: 'no-cors' });
-//     };
-//     window.addEventListener('beforeunload', rel);
-//     return () => window.removeEventListener('beforeunload', rel);
-//   }, []);
-
-//   useEffect(() => {
-//     if (exam && !submitted && !alreadySubmitted) {
-//       const token = localStorage.getItem('token');
-//       const iv = setInterval(async () => {
-//         const res = await fetch(
-//           `${API_URL}/api/cheats/me?exam=${examId}`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok && (await res.json()).cheated) {
-//           alert('⚠️ Cheating detected—auto-submitting!');
-//           handleSubmit();
-//         }
-//       }, 5000);
-//       return () => clearInterval(iv);
-//     }
-//   }, [exam, submitted, alreadySubmitted, examId]);
-
-//   useEffect(() => {
-//     window.history.pushState(null, '', window.location.href);
-//     function onBack() {
-//       alert('Cannot go back—auto-submitting.');
-//       handleSubmit();
-//     }
-//     window.onpopstate = onBack;
-//     return () => { window.onpopstate = null; };
-//   }, []);
-
-//   // == Updated: Desktop resize + mobile orientation-change ==
-//   useEffect(() => {
-//     function onResize() {
-//       if (window.matchMedia('(min-width: 1024px)').matches) {
-//         alert('⚠️ Resizing is not allowed. Your exam will be submitted.');
-//         handleSubmit();
-//       }
-//     }
-//     function onOrientationChange() {
-//       alert('⚠️ Orientation change is not allowed. Your exam will be submitted.');
-//       handleSubmit();
-//     }
-//     window.addEventListener('resize', onResize);
-//     window.addEventListener('orientationchange', onOrientationChange);
-//     return () => {
-//       window.removeEventListener('resize', onResize);
-//       window.removeEventListener('orientationchange', onOrientationChange);
-//     };
-//   }, [handleSubmit]);
-
-//   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
-
-//   async function handleSubmit() {
-//     if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
-//     submittingRef.current = true;
-//     setSubmitted(true);
-
-//     const arr = exam.questions.map((_, i) => answers[i] ?? null);
-//     const raw = exam.questions.reduce(
-//       (s, q, i) => s + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-//       0
-//     );
-//     setScore(raw);
-
-//     try {
-//       const token = localStorage.getItem('token');
-//       const res = await fetch(
-//         `${API_URL}/api/exams/${examId}/submit`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`
-//           },
-//           body: JSON.stringify({ answers: arr, score: raw })
-//         }
-//       );
-//       if (!res.ok) throw new Error();
-
-//       const data = await res.json();
-//       localStorage.setItem(`submission_${examId}`, data.submissionId);
-
-//       window.removeEventListener('beforeunload', beforeUnloadHandler);
-//       window.onpopstate = null;
-//       document.exitFullscreen?.();
-
-//       await fetch(`${API_URL}/api/exams/${examId}/progress`, {
-//         method: 'DELETE',
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-//       await fetch(`${YOLO_BACKEND_URL}/release_camera`, { method: 'POST' });
-//     } catch {
-//       alert('Submission failed—retry.');
-//       submittingRef.current = false;
-//       setSubmitted(false);
-//     }
-//   }
-
-//   const fmt = s => {
-//     const m = String(Math.floor(s / 60)).padStart(2, '0');
-//     const sec = String(s % 60).padStart(2, '0');
-//     return `${m}:${sec}`;
-//   };
-
-//   const streamUrl = `${YOLO_BACKEND_URL}/video_feed?exam=${examId}&token=${encodeURIComponent(localStorage.getItem('token'))}`;
-
-//   return (
-//     <>
-//       {/* Ensure in public/index.html: <meta name="viewport" content="width=device-width, initial-scale=1" /> */}
-//       <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-//         {/* Side panel */}
-//         <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
-//           <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop: '100%' }}>
-//             <img
-//               ref={imgRef}
-//               src={streamUrl}
-//               alt="Proctoring"
-//               className="absolute top-0 left-0 w-full h-full object-cover"
-//               onLoad={() => setFeedLoaded(true)}
-//             />
-//             {!feedLoaded && (
-//               <div className="absolute inset-0 flex items-center justify-center bg-black">
-//                 <BiLoaderAlt className="animate-spin text-white text-4xl" />
-//               </div>
-//             )}
-//           </div>
-//           <div className="text-4xl font-mono mb-2 text-center">
-//             {timeLeft != null ? fmt(timeLeft) : '--:--'}
-//           </div>
-//           <div className="w-full bg-gray-200 h-2 rounded-full">
-//             <div
-//               className="bg-[#002855] h-2 rounded-full transition-all duration-500"
-//               style={{
-//                 width: exam
-//                   ? `${((exam.duration * 60 - (timeLeft || 0)) / (exam.duration * 60)) * 100}%`
-//                   : '0%'
-//               }}
-//             />
-//           </div>
-//         </div>
-
-//         {/* Main content */}
-//         <div className="flex-1 p-6 lg:p-12 overflow-auto">
-//           {!exam ? (
-//             <div className="text-center text-gray-500">Loading exam…</div>
-//           ) : submitted || alreadySubmitted ? (
-//             <div className="text-center">
-//               <h2 className="text-4xl font-bold text-[#002855] mb-4">Your Score</h2>
-//               <p className="text-2xl mb-6">{score} / {exam.questions.length}</p>
-//               {exam.questions.map((q, i) => (
-//                 <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-6 max-w-2xl mx-auto text-left">
-//                   <h3 className="text-2xl font-semibold text-[#002855] mb-3">
-//                     Q{i + 1}. {q.questionText}
-//                   </h3>
-//                   <ul className="list-disc list-inside space-y-2">
-//                     {q.options.map((opt, j) => {
-//                       const corr = j === q.correctAnswerIndex;
-//                       const cho = answers[i] === j;
-//                       return (
-//                         <li key={j} className={corr ? 'text-green-600' : cho ? 'text-red-600' : ''}>
-//                           {opt} {corr ? '✔️' : cho ? '❌' : ''}
-//                         </li>
-//                       );
-//                     })}
-//                   </ul>
-//                 </div>
-//               ))}
-//             </div>
-//           ) : (
-//             <>
-//               {exam.questions.map((q, i) => (
-//                 <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-8">
-//                   <h3 className="text-2xl font-semibold text-[#002855] mb-3">
-//                     Q{i + 1}. {q.questionText}
-//                   </h3>
-//                   <div className="space-y-3">
-//                     {q.options.map((opt, j) => (
-//                       <label key={j} className="flex items-center space-x-3">
-//                         <input
-//                           type="radio"
-//                           checked={answers[i] === j}
-//                           onChange={() => handleChange(i, j)}
-//                           className="accent-[#002855] h-5 w-5"
-//                         />
-//                         <span>{opt}</span>
-//                       </label>
-//                     ))}
-//                   </div>
-//                 </div>
-//               ))}
-//               <div className="text-center mt-6">
-//                 <button
-//                   onClick={handleSubmit}
-//                   disabled={submitted}
-//                   className={`px-8 py-3 text-lg rounded transition ${submitted ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#002855] hover:bg-[#001f47] text-white'}`}
-//                 >
-//                   {submitted ? 'Submitted' : 'Submit'}
-//                 </button>
-//               </div>
-//             </>
-//           )}
-//         </div>
-//       </div>
-//     </>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-// // src/pages/GiveExam.jsx
-// import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import { useNavigate, useParams } from 'react-router-dom';
-// import { BiLoaderAlt } from 'react-icons/bi';
-
-// export default function GiveExam() {
-//   const { id: examId } = useParams();
-//   const navigate = useNavigate();
-//   const imgRef = useRef(null);
-//   const submittingRef = useRef(false);
-//   const onVisRef = useRef(null);
-
-//   const [feedLoaded, setFeedLoaded] = useState(false);
-//   const [exam, setExam] = useState(null);
-//   const [answers, setAnswers] = useState({});
-//   const [timeLeft, setTimeLeft] = useState(null);
-//   const [submitted, setSubmitted] = useState(false);
-//   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-//   const [score, setScore] = useState(null);
-
-//   const API_URL = import.meta.env.VITE_API_BASE_URL;
-//   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
-
-//   // Prevent accidental close
-//   const beforeUnloadHandler = useCallback((e) => {
-//     if (!submitted && !alreadySubmitted) {
-//       e.preventDefault();
-//       e.returnValue = 'Closing this window will auto-submit your exam.';
-//     }
-//   }, [submitted, alreadySubmitted]);
-
-//   useEffect(() => {
-//     window.addEventListener('beforeunload', beforeUnloadHandler);
-//     return () => {
-//       window.removeEventListener('beforeunload', beforeUnloadHandler);
-//     };
-//   }, [beforeUnloadHandler]);
-
-//   // Auto-submit on unload if needed
-//   useEffect(() => {
-//     const handleUnload = () => {
-//       if (submitted || alreadySubmitted || !exam) return;
-//       handleSubmit();
-//     };
-//     window.addEventListener('unload', handleUnload);
-//     return () => {
-//       window.removeEventListener('unload', handleUnload);
-//     };
-//   }, [submitted, alreadySubmitted, exam]);
-
-//   // Immediate auto-submit on first tab switch
-//   useEffect(() => {
-//     function handleVisibility() {
-//       if (document.hidden && !submitted && !alreadySubmitted) {
-//         alert('⚠️ Tab change detected—auto-submitting now.');
-//         handleSubmit();
-//       }
-//     }
-//     document.addEventListener('visibilitychange', handleVisibility);
-//     return () => {
-//       document.removeEventListener('visibilitychange', handleVisibility);
-//     };
-//   }, [submitted, alreadySubmitted]);
-
-//   // Load saved progress
-//   useEffect(() => {
-//     if (!examId) return;
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/progress`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok) {
-//           const p = await res.json();
-//           if (p.timeLeft != null) {
-//             setAnswers(p.answers || {});
-//             setTimeLeft(p.timeLeft);
-//           }
-//         }
-//       } catch {}
-//     })();
-//   }, [examId]);
-
-//   // Fetch exam details or submission
-//   useEffect(() => {
-//     if (!examId) return navigate(-1);
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(
-//           `${API_URL}/api/exams/${examId}/student`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (!res.ok) throw new Error();
-//         const data = await res.json();
-//         if (data.alreadySubmitted) {
-//           setAlreadySubmitted(true);
-//           setSubmitted(true);
-//           setScore(data.score);
-//           setExam({ questions: data.questions || [], duration: 0 });
-//           setAnswers(data.answers || {});
-//         } else {
-//           setExam(data);
-//         }
-//       } catch {
-//         navigate(-1);
-//       }
-//     })();
-//   }, [examId, navigate]);
-
-//   // Initialize timer
-//   useEffect(() => {
-//     if (exam && timeLeft == null && !alreadySubmitted) {
-//       setTimeLeft(exam.duration * 60);
-//     }
-//   }, [exam, timeLeft, alreadySubmitted]);
-
-//   // Countdown
-//   useEffect(() => {
-//     if (timeLeft == null || submitted) return;
-//     if (timeLeft <= 0) {
-//       handleSubmit();
-//       return;
-//     }
-//     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-//     return () => clearTimeout(t);
-//   }, [timeLeft, submitted]);
-
-//   // Periodically save progress
-//   useEffect(() => {
-//     if (!submitted && exam && timeLeft != null) {
-//       const token = localStorage.getItem('token');
-//       fetch(
-//         `${API_URL}/api/exams/${examId}/progress`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`
-//           },
-//           body: JSON.stringify({ answers, timeLeft })
-//         }
-//       );
-//     }
-//   }, [answers, timeLeft, exam, submitted, examId]);
-
-//   // Release camera on leave
-//   useEffect(() => {
-//     const rel = () => {
-//       const u = `${YOLO_BACKEND_URL}/release_camera`;
-//       if (navigator.sendBeacon) navigator.sendBeacon(u);
-//       else fetch(u, { method: 'POST', mode: 'no-cors' });
-//     };
-//     window.addEventListener('beforeunload', rel);
-//     return () => window.removeEventListener('beforeunload', rel);
-//   }, []);
-
-//   // Cheating poll
-//   useEffect(() => {
-//     if (exam && !submitted && !alreadySubmitted) {
-//       const token = localStorage.getItem('token');
-//       const iv = setInterval(async () => {
-//         const res = await fetch(
-//           `${API_URL}/api/cheats/me?exam=${examId}`,
-//           { headers: { Authorization: `Bearer ${token}` } }
-//         );
-//         if (res.ok && (await res.json()).cheated) {
-//           alert('⚠️ Cheating detected—auto-submitting!');
-//           handleSubmit();
-//         }
-//       }, 5000);
-//       return () => clearInterval(iv);
-//     }
-//   }, [exam, submitted, alreadySubmitted, examId]);
-
-//   // Prevent back navigation
-//   useEffect(() => {
-//     window.history.pushState(null, '', window.location.href);
-//     function onBack() {
-//       alert('Cannot go back—auto-submitting.');
-//       handleSubmit();
-//     }
-//     window.onpopstate = onBack;
-//     return () => { window.onpopstate = null; };
-//   }, []);
-
-//   // Desktop resize lock (mobile scrolling won’t trigger this)
-//   useEffect(() => {
-//     function onResize() {
-//       if (window.matchMedia('(min-width: 1024px)').matches) {
-//         alert('⚠️ Resizing is not allowed. Auto-submitting.');
-//         handleSubmit();
-//       }
-//     }
-//     window.addEventListener('resize', onResize);
-//     return () => {
-//       window.removeEventListener('resize', onResize);
-//     };
-//   }, [handleSubmit]);
-
-//   // Handle answer change
-//   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
-
-//   // Submit logic
-//   async function handleSubmit() {
-//     if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
-//     submittingRef.current = true;
-//     setSubmitted(true);
-
-//     // Remove visibility listener so no further tab submissions
-//     document.removeEventListener('visibilitychange', onVisRef.current);
-
-//     const arr = exam.questions.map((_, i) => answers[i] ?? null);
-//     const raw = exam.questions.reduce(
-//       (s, q, i) => s + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-//       0
-//     );
-//     setScore(raw);
-
-//     try {
-//       const token = localStorage.getItem('token');
-//       const res = await fetch(
-//         `${API_URL}/api/exams/${examId}/submit`,
-//         {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//             Authorization: `Bearer ${token}`
-//           },
-//           body: JSON.stringify({ answers: arr, score: raw })
-//         }
-//       );
-//       if (!res.ok) throw new Error();
-
-//       const data = await res.json();
-//       localStorage.setItem(`submission_${examId}`, data.submissionId);
-
-//       window.removeEventListener('beforeunload', beforeUnloadHandler);
-//       window.onpopstate = null;
-//       document.exitFullscreen?.();
-
-//       await fetch(`${API_URL}/api/exams/${examId}/progress`, {
-//         method: 'DELETE',
-//         headers: { Authorization: `Bearer ${token}` }
-//       });
-//       await fetch(`${YOLO_BACKEND_URL}/release_camera`, { method: 'POST' });
-//     } catch {
-//       alert('Submission failed—retry.');
-//       submittingRef.current = false;
-//       setSubmitted(false);
-//     }
-//   }
-
-//   // Format timer
-//   const fmt = s => {
-//     const m = String(Math.floor(s / 60)).padStart(2, '0');
-//     const sec = String(s % 60).padStart(2, '0');
-//     return `${m}:${sec}`;
-//   };
-
-//   // Video stream URL
-//   const streamUrl = `${YOLO_BACKEND_URL}/video_feed?exam=${examId}&token=${encodeURIComponent(localStorage.getItem('token'))}`;
-
-//   return (
-//     <>
-//       {/* Ensure public/index.html includes: */}
-//       {/* <meta name="viewport" content="width=device-width, initial-scale=1" /> */}
-
-//       <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-//         {/* Side panel */}
-//         <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
-//           <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop: '100%' }}>
-//             <img
-//               ref={imgRef}
-//               src={streamUrl}
-//               alt="Proctoring"
-//               className="absolute top-0 left-0 w-full h-full object-cover"
-//               onLoad={() => setFeedLoaded(true)}
-//             />
-//             {!feedLoaded && (
-//               <div className="absolute inset-0 flex items-center justify-center bg-black">
-//                 <BiLoaderAlt className="animate-spin text-white text-4xl" />
-//               </div>
-//             )}
-//           </div>
-//           <div className="text-4xl font-mono mb-2 text-center">
-//             {timeLeft != null ? fmt(timeLeft) : '--:--'}
-//           </div>
-//           <div className="w-full bg-gray-200 h-2 rounded-full">
-//             <div
-//               className="bg-[#002855] h-2 rounded-full transition-all duration-500"
-//               style={{
-//                 width: exam
-//                   ? `${((exam.duration * 60 - (timeLeft || 0)) / (exam.duration * 60)) * 100}%`
-//                   : '0%'
-//               }}
-//             />
-//           </div>
-//         </div>
-
-//         {/* Main content */}
-//         <div className="flex-1 p-6 lg:p-12 overflow-auto">
-//           {!exam ? (
-//             <div className="text-center text-gray-500">Loading exam…</div>
-//           ) : submitted || alreadySubmitted ? (
-//             <div className="text-center">
-//               <h2 className="text-4xl font-bold text-[#002855] mb-4">Your Score</h2>
-//               <p className="text-2xl mb-6">{score} / {exam.questions.length}</p>
-//               {exam.questions.map((q, i) => (
-//                 <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-6 max-w-2xl mx-auto text-left">
-//                   <h3 className="text-2xl font-semibold text-[#002855] mb-3">
-//                     Q{i + 1}. {q.questionText}
-//                   </h3>
-//                   <ul className="list-disc list-inside space-y-2">
-//                     {q.options.map((opt, j) => {
-//                       const corr = j === q.correctAnswerIndex;
-//                       const cho = answers[i] === j;
-//                       return (
-//                         <li key={j} className={corr ? 'text-green-600' : cho ? 'text-red-600' : ''}>
-//                           {opt} {corr ? '✔️' : cho ? '❌' : ''}
-//                         </li>
-//                       );
-//                     })}
-//                   </ul>
-//                 </div>
-//               ))}
-//             </div>
-//           ) : (
-//             <>
-//               {exam.questions.map((q, i) => (
-//                 <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-8">
-//                   <h3 className="text-2xl font-semibold text-[#002855] mb-3">
-//                     Q{i + 1}. {q.questionText}
-//                   </h3>
-//                   <div className="space-y-3">
-//                     {q.options.map((opt, j) => (
-//                       <label key={j} className="flex items-center space-x-3">
-//                         <input
-//                           type="radio"
-//                           checked={answers[i] === j}
-//                           onChange={() => handleChange(i, j)}
-//                           className="accent-[#002855] h-5 w-5"
-//                         />
-//                         <span>{opt}</span>
-//                       </label>
-//                     ))}
-//                   </div>
-//                 </div>
-//               ))}
-//               <div className="text-center mt-6">
-//                 <button
-//                   onClick={handleSubmit}
-//                   disabled={submitted}
-//                   className={`px-8 py-3 text-lg rounded transition ${
-//                     submitted ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#002855] hover:bg-[#001f47] text-white'
-//                   }`}
-//                 >
-//                   {submitted ? 'Submitted' : 'Submit'}
-//                 </button>
-//               </div>
-//             </>
-//           )}
-//         </div>
-//       </div>
-//     </>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-// yeh mera full tested code hy sirf window giveexam ki exit krne pr button start test se nai
-//nai change hota hy isme mobile pr screen nai ati yani mcqs nai ate
-
-
-// // src/pages/GiveExam.jsx
-// import React, { useState, useEffect, useRef, useCallback } from 'react';
-// import { useNavigate, useParams } from 'react-router-dom';
-// import { BiLoaderAlt } from 'react-icons/bi';
-
-// export default function GiveExam() {
-//   const { id: examId } = useParams();
-//   const navigate = useNavigate();
-//   const imgRef = useRef(null);
-//   const submittingRef = useRef(false);
-
-//   const [feedLoaded, setFeedLoaded] = useState(false);
-//   const [exam, setExam] = useState(null);
-//   const [answers, setAnswers] = useState({});
-//   const [timeLeft, setTimeLeft] = useState(null);
-//   const [submitted, setSubmitted] = useState(false);
-//   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-//   const [score, setScore] = useState(null);
-
-//   const API_URL = import.meta.env.VITE_API_BASE_URL;
-//   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
-
-//   // Prevent accidental close/refresh
-//   const beforeUnloadHandler = useCallback(e => {
-//     if (!submitted && !alreadySubmitted) {
-//       e.preventDefault();
-//       e.returnValue = '';
-//     }
-//   }, [submitted, alreadySubmitted]);
-
-//   // Core submit logic
-//   const handleSubmit = useCallback(async () => {
-//     if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
-//     submittingRef.current = true;
-//     setSubmitted(true);
-
-//     // remove listeners immediately
-//     window.removeEventListener('beforeunload', beforeUnloadHandler);
-//     document.removeEventListener('visibilitychange', onTabChange);
-//     window.removeEventListener('resize', onResize);
-//     window.onpopstate = null;
-
-//     // compute score
-//     const arr = exam.questions.map((_, i) => answers[i] ?? null);
-//     const raw = exam.questions.reduce(
-//       (sum, q, i) => sum + (arr[i] === q.correctAnswerIndex ? 1 : 0),
-//       0
-//     );
-//     setScore(raw);
-
-//     const token = localStorage.getItem('token');
-//     // submit answers (ignore 400 duplicate)
-//     try {
-//       const res = await fetch(`${API_URL}/api/exams/${examId}/submit`, {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//           Authorization: `Bearer ${token}`
-//         },
-//         body: JSON.stringify({ answers: arr, score: raw })
-//       });
-//       if (res.ok) {
-//         const data = await res.json();
-//         localStorage.setItem(`submission_${examId}`, data.submissionId);
-//       }
-//     } catch (e) {
-//       console.error('Submit failed', e);
-//     }
-//     // delete saved progress
-//     fetch(`${API_URL}/api/exams/${examId}/progress`, {
-//       method: 'DELETE',
-//       headers: { Authorization: `Bearer ${token}` }
-//     }).catch(() => {});
-//     // release camera
-//     fetch(`${YOLO_BACKEND_URL}/release_camera`, { method: 'POST' }).catch(() => {});
-//   }, [
-//     submitted,
-//     alreadySubmitted,
-//     exam,
-//     answers,
-//     examId,
-//     API_URL,
-//     YOLO_BACKEND_URL,
-//     beforeUnloadHandler
-//   ]);
-
-//   // Handlers for tab-change and resize
-//   const onTabChange = () => {
-//     if (!submitted && !alreadySubmitted && document.hidden) {
-//       handleSubmit();
-//     }
-//   };
-//   const onResize = () => {
-//     if (!submitted && !alreadySubmitted && window.matchMedia('(min-width:1024px)').matches) {
-//       handleSubmit();
-//     }
-//   };
-
-//   // beforeunload
-//   useEffect(() => {
-//     window.addEventListener('beforeunload', beforeUnloadHandler);
-//     return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
-//   }, [beforeUnloadHandler]);
-
-//   // unload fallback
-//   useEffect(() => {
-//     const onUnload = () => {
-//       if (!submitted && !alreadySubmitted) handleSubmit();
-//     };
-//     window.addEventListener('unload', onUnload);
-//     return () => window.removeEventListener('unload', onUnload);
-//   }, [submitted, alreadySubmitted, handleSubmit]);
-
-//   // set up tab-change & resize AFTER exam loads
-//   useEffect(() => {
-//     if (!exam || submitted || alreadySubmitted) return;
-//     document.addEventListener('visibilitychange', onTabChange);
-//     window.addEventListener('resize', onResize);
-//     return () => {
-//       document.removeEventListener('visibilitychange', onTabChange);
-//       window.removeEventListener('resize', onResize);
-//     };
-//   }, [exam, submitted, alreadySubmitted, handleSubmit]);
-
-//   // prevent back navigation
-//   useEffect(() => {
-//     window.history.pushState(null, '', window.location.href);
-//     window.onpopstate = () => {
-//       if (!submitted && !alreadySubmitted) handleSubmit();
-//     };
-//     return () => { window.onpopstate = null; };
-//   }, [submitted, alreadySubmitted, handleSubmit]);
-
-//   // load saved progress
-//   useEffect(() => {
-//     if (!examId) return;
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(`${API_URL}/api/exams/${examId}/progress`, {
-//           headers: { Authorization: `Bearer ${token}` }
-//         });
-//         if (res.ok) {
-//           const p = await res.json();
-//           if (p.timeLeft != null) {
-//             setAnswers(p.answers || {});
-//             setTimeLeft(p.timeLeft);
-//           }
-//         }
-//       } catch {}
-//     })();
-//   }, [examId, API_URL]);
-
-//   // fetch exam or submission
-//   useEffect(() => {
-//     if (!examId) return navigate(-1);
-//     (async () => {
-//       try {
-//         const token = localStorage.getItem('token');
-//         const res = await fetch(`${API_URL}/api/exams/${examId}/student`, {
-//           headers: { Authorization: `Bearer ${token}` }
-//         });
-//         if (!res.ok) throw new Error();
-//         const data = await res.json();
-//         if (data.alreadySubmitted) {
-//           setAlreadySubmitted(true);
-//           setSubmitted(true);
-//           setScore(data.score);
-//           setExam({ questions: data.questions || [], duration: 0 });
-//           setAnswers(data.answers || {});
-//         } else {
-//           setExam(data);
-//         }
-//       } catch {
-//         navigate(-1);
-//       }
-//     })();
-//   }, [examId, navigate]);
-
-//   // init timer
-//   useEffect(() => {
-//     if (exam && timeLeft == null && !alreadySubmitted) {
-//       setTimeLeft(exam.duration * 60);
-//     }
-//   }, [exam, timeLeft, alreadySubmitted]);
-
-//   // countdown
-//   useEffect(() => {
-//     if (timeLeft == null || submitted) return;
-//     if (timeLeft <= 0) {
-//       handleSubmit();
-//       return;
-//     }
-//     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
-//     return () => clearTimeout(t);
-//   }, [timeLeft, submitted, handleSubmit]);
-
-//   // periodic save
-//   useEffect(() => {
-//     if (!submitted && exam && timeLeft != null) {
-//       const token = localStorage.getItem('token');
-//       fetch(`${API_URL}/api/exams/${examId}/progress`, {
-//         method: 'POST',
-//         headers: {
-//           'Content-Type': 'application/json',
-//           Authorization: `Bearer ${token}`
-//         },
-//         body: JSON.stringify({ answers, timeLeft })
-//       });
-//     }
-//   }, [answers, timeLeft, exam, submitted, examId, API_URL]);
-
-//   // cheat poll
-//   useEffect(() => {
-//     if (exam && !submitted && !alreadySubmitted) {
-//       const token = localStorage.getItem('token');
-//       const iv = setInterval(async () => {
-//         const res = await fetch(`${API_URL}/api/cheats/me?exam=${examId}`, {
-//           headers: { Authorization: `Bearer ${token}` }
-//         });
-//         if (res.ok && (await res.json()).cheated) {
-//           handleSubmit();
-//         }
-//       }, 5000);
-//       return () => clearInterval(iv);
-//     }
-//   }, [exam, submitted, alreadySubmitted, examId, API_URL, handleSubmit]);
-
-//   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
-//   const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
-//   const streamUrl = `${YOLO_BACKEND_URL}/video_feed?exam=${examId}&token=${encodeURIComponent(localStorage.getItem('token'))}`;
-
-//   return (
-//     <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
-//       {/* Side panel */}
-//       <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky top-0 h-screen">
-//         <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop:'100%' }}>
-//           <img
-//             ref={imgRef}
-//             src={streamUrl}
-//             alt="Proctoring"
-//             className="absolute inset-0 w-full h-full object-cover"
-//             onLoad={()=>setFeedLoaded(true)}
-//           />
-//           {!feedLoaded && (
-//             <div className="absolute inset-0 flex items-center justify-center bg-black">
-//               <BiLoaderAlt className="animate-spin text-white text-4xl"/>
-//             </div>
-//           )}
-//         </div>
-//         <div className="text-4xl font-mono mb-2 text-center">{timeLeft!=null?fmt(timeLeft):'--:--'}</div>
-//         <div className="w-full bg-gray-200 h-2 rounded-full">
-//           <div
-//             className="bg-[#002855] h-2 rounded-full transition-all duration-500"
-//             style={{ width: exam ? `${((exam.duration*60 - (timeLeft||0))/(exam.duration*60))*100}%` : '0%' }}
-//           />
-//         </div>
-//       </div>
-//       {/* Main content */}
-//       <div className="flex-1 p-6 lg:p-12 overflow-auto">
-//         {!exam ? (
-//           <div className="text-center text-gray-500">Loading exam…</div>
-//         ) : submitted || alreadySubmitted ? (
-//           <div className="text-center">
-//             <h2 className="text-4xl font-bold text-[#002855] mb-4">Your Score</h2>
-//             <p className="text-2xl mb-6">{score} / {exam.questions.length}</p>
-//             {exam.questions.map((q,i) => (
-//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-6 max-w-2xl mx-auto text-left">
-//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
-//                 <ul className="list-disc list-inside space-y-2">
-//                   {q.options.map((opt,j) => {
-//                     const corr = j===q.correctAnswerIndex;
-//                     const cho = answers[i]===j;
-//                     return (
-//                       <li key={j} className={corr?'text-green-600':cho?'text-red-600':''}>
-//                         {opt} {corr?'✔️':cho?'❌':''}
-//                       </li>
-//                     );
-//                   })}
-//                 </ul>
-//               </div>
-//             ))}
-//           </div>
-//         ) : (
-//           <>
-//             {exam.questions.map((q,i) => (
-//               <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-8">
-//                 <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
-//                 <div className="space-y-3">
-//                   {q.options.map((opt,j) => (
-//                     <label key={j} className="flex items-center space-x-3">
-//                       <input
-//                         type="radio"
-//                         checked={answers[i]===j}
-//                         onChange={()=>handleChange(i,j)}
-//                         className="accent-[#002855] h-5 w-5"
-//                       />
-//                       <span>{opt}</span>
-//                     </label>
-//                   ))}
-//                 </div>
-//               </div>
-//             ))}
-//             <div className="text-center mt-6">
-//               <button
-//                 onClick={handleSubmit}
-//                 disabled={submitted}
-//                 className={`px-8 py-3 text-lg rounded transition ${
-//                   submitted
-//                     ? 'bg-gray-400 cursor-not-allowed'
-//                     : 'bg-[#002855] hover:bg-[#001f47] text-white'
-//                 }`}
-//               >
-//                 {submitted ? 'Submitted' : 'Submit'}
-//               </button>
-//             </div>
-//           </>
-//         )}
-//       </div>
-//     </div>
-//   );
-// }
-
-
-
-
-
-
-
-
-
-
-
-// src/pages/GiveExam.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BiLoaderAlt } from 'react-icons/bi';
@@ -1885,10 +6,14 @@ import { BiLoaderAlt } from 'react-icons/bi';
 export default function GiveExam() {
   const { id: examId } = useParams();
   const navigate = useNavigate();
-  const imgRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
   const submittingRef = useRef(false);
+  const frameProcessingRef = useRef(false);
 
-  const [feedLoaded, setFeedLoaded] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState('loading'); // 'loading', 'active', 'inactive', 'error'
+  const [aiServerStatus, setAiServerStatus] = useState('checking'); // 'checking', 'active', 'inactive'
   const [exam, setExam] = useState(null);
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(null);
@@ -1896,23 +21,192 @@ export default function GiveExam() {
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [score, setScore] = useState(null);
 
-  const API_URL = import.meta.env.VITE_API_BASE_URL;
-  const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL;
+  const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+  const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL || 'http://127.0.0.1:5001';
+
+  // Initialize camera
+  const initializeCamera = useCallback(async () => {
+    try {
+      setCameraStatus('loading');
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { 
+          width: { ideal: 640 }, 
+          height: { ideal: 480 },
+          facingMode: 'user'
+        },
+        audio: false
+      });
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        setCameraStatus('active');
+        
+        // Start frame processing
+        startFrameProcessing();
+      }
+    } catch (error) {
+      console.error('Camera initialization failed:', error);
+      setCameraStatus('error');
+    }
+  }, []);
+
+  // Stop camera
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        track.stop();
+        console.log('Camera track stopped:', track.kind);
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current.load(); // Force video element to release resources
+    }
+    setCameraStatus('inactive');
+    frameProcessingRef.current = false;
+  }, []);
+
+  // Check AI server status
+  const checkAiServerStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`${YOLO_BACKEND_URL}/status`);
+      if (response.ok) {
+        setAiServerStatus('active');
+      } else {
+        setAiServerStatus('inactive');
+      }
+    } catch (error) {
+      console.error('AI server status check failed:', error);
+      setAiServerStatus('inactive');
+    }
+  }, [YOLO_BACKEND_URL]);
+
+  // Process frame for AI detection
+  const processFrame = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || frameProcessingRef.current === false) return;
+    
+    try {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+      const frameData = canvas.toDataURL('image/jpeg', 0.8);
+      const token = sessionStorage.getItem('token');
+      
+      const response = await fetch(`${YOLO_BACKEND_URL}/process_frame`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          frame: frameData,
+          exam: examId,
+          token: `Bearer ${token}`
+        })
+      });
+      
+      if (!response.ok) {
+        console.error('Frame processing failed:', response.status);
+      } else {
+        // Check if cheat was detected in the response
+        const result = await response.json();
+        if (result.status === 'cheat_detected') {
+          console.log('🚨 IMMEDIATE CHEAT DETECTED:', result.reason);
+          handleSubmit();
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Frame processing error:', error);
+    }
+  }, [examId, YOLO_BACKEND_URL]);
+
+  // Start frame processing loop
+  const startFrameProcessing = useCallback(() => {
+    frameProcessingRef.current = true;
+    
+    const processLoop = () => {
+      if (frameProcessingRef.current && !submitted && !alreadySubmitted) {
+        processFrame();
+        setTimeout(processLoop, 1000); // Process frame every second
+      }
+    };
+    
+    processLoop();
+  }, [processFrame, submitted, alreadySubmitted]);
+
+  // Cleanup student data from AI server
+  const cleanupAiServer = useCallback(async () => {
+    try {
+      const token = sessionStorage.getItem('token');
+      await fetch(`${YOLO_BACKEND_URL}/cleanup_student`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          token: `Bearer ${token}`
+        })
+      });
+    } catch (error) {
+      console.error('AI server cleanup failed:', error);
+    }
+  }, [YOLO_BACKEND_URL]);
 
   const beforeUnloadHandler = useCallback(e => {
-    if (!submitted && !alreadySubmitted) {
+    if (!submitted && !alreadySubmitted && exam) {
       e.preventDefault();
       e.returnValue = '';
+      
+      // Stop camera and cleanup
+      stopCamera();
+      cleanupAiServer();
+      
+      // Immediate localStorage update for cross-window communication
+      const storageKey = `submission_${examId}`;
+      const tempSubmissionId = `temp_${Date.now()}_${examId}`;
+      
+      // Set temporary submission to trigger button change immediately
+      localStorage.setItem(storageKey, tempSubmissionId);
+      sessionStorage.setItem(storageKey, tempSubmissionId);
+      
+      // Send notification to parent window immediately
+      try {
+        if (window.opener && !window.opener.closed) {
+          window.opener.dispatchEvent(new CustomEvent('examSubmitted', {
+            detail: { type: 'examSubmitted', examId: examId, submissionId: tempSubmissionId }
+          }));
+        }
+      } catch (error) {
+        console.log('Could not notify parent window on beforeunload:', error);
+      }
     }
-  }, [submitted, alreadySubmitted]);
+  }, [submitted, alreadySubmitted, exam, examId, stopCamera, cleanupAiServer]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(async (isWindowClosing = false) => {
     if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
     submittingRef.current = true;
     setSubmitted(true);
 
+    // Stop camera and frame processing immediately
+    frameProcessingRef.current = false;
+    stopCamera();
+    
+    // Force additional cleanup
+    setTimeout(() => {
+      stopCamera();
+    }, 100);
+
+    // Remove all anti-cheating event listeners once submitted
     window.removeEventListener('beforeunload', beforeUnloadHandler);
     document.removeEventListener('visibilitychange', onTabChange);
+    window.removeEventListener('blur', handleBlur); // Remove blur listener
     window.onpopstate = null;
 
     const arr = exam.questions.map((_, i) => answers[i] ?? null);
@@ -1922,28 +216,67 @@ export default function GiveExam() {
     );
     setScore(raw);
 
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('token');
+    const submissionData = JSON.stringify({ answers: arr, score: raw });
+    const storageKey = `submission_${examId}`;
+    
     try {
-      const res = await fetch(`${API_URL}/api/exams/${examId}/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ answers: arr, score: raw })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        localStorage.setItem(`submission_${examId}`, data.submissionId);
+      if (isWindowClosing && navigator.sendBeacon) {
+        // Use sendBeacon for reliable submission during window close
+        const formData = new FormData();
+        formData.append('data', submissionData);
+        formData.append('token', token);
+        
+        navigator.sendBeacon(`${API_URL}/api/exams/${examId}/submit`, formData);
+        
+        // Set storage immediately for cross-window communication
+        const tempSubmissionId = `beacon_${Date.now()}_${examId}`;
+        localStorage.setItem(storageKey, tempSubmissionId);
+        sessionStorage.setItem(storageKey, tempSubmissionId);
+      } else {
+        // Normal fetch for regular submissions
+        const res = await fetch(`${API_URL}/api/exams/${examId}/submit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: submissionData
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          sessionStorage.setItem(storageKey, data.submissionId);
+          localStorage.setItem(storageKey, data.submissionId);
+          
+          // Dispatch custom event to notify parent window
+          try {
+            if (window.opener && !window.opener.closed) {
+              window.opener.dispatchEvent(new CustomEvent('examSubmitted', {
+                detail: { type: 'examSubmitted', examId: examId, submissionId: data.submissionId }
+              }));
+            }
+          } catch (e) {
+            console.log('Could not notify parent window:', e);
+          }
+        }
       }
     } catch (e) {
       console.error('Submit failed', e);
+      // Even if submission fails, mark as submitted to prevent retries
+      const fallbackSubmissionId = `failed_${Date.now()}_${examId}`;
+      localStorage.setItem(storageKey, fallbackSubmissionId);
+      sessionStorage.setItem(storageKey, fallbackSubmissionId);
     }
+    
+    // Cleanup calls
     fetch(`${API_URL}/api/exams/${examId}/progress`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     }).catch(() => {});
-    fetch(`${YOLO_BACKEND_URL}/release_camera`, { method: 'POST' }).catch(() => {});
+    
+    // Cleanup AI server
+    cleanupAiServer();
   }, [
     submitted,
     alreadySubmitted,
@@ -1951,8 +284,9 @@ export default function GiveExam() {
     answers,
     examId,
     API_URL,
-    YOLO_BACKEND_URL,
-    beforeUnloadHandler
+    beforeUnloadHandler,
+    stopCamera,
+    cleanupAiServer
   ]);
 
   const onTabChange = () => {
@@ -1960,6 +294,27 @@ export default function GiveExam() {
       handleSubmit();
     }
   };
+  
+  // Initialize camera and AI server when exam starts
+  useEffect(() => {
+    if (exam && !submitted && !alreadySubmitted) {
+      checkAiServerStatus();
+      initializeCamera();
+    } else if (submitted || alreadySubmitted) {
+      // Immediately stop camera if exam is submitted
+      stopCamera();
+    }
+    
+    return () => {
+      stopCamera();
+    };
+  }, [exam, submitted, alreadySubmitted, initializeCamera, stopCamera, checkAiServerStatus]);
+
+  // Dummy handleBlur for useCallback dependency, real one is inside useEffect
+  const handleBlur = useCallback(() => {
+    handleSubmit();
+  }, [handleSubmit]);
+
 
   useEffect(() => {
     window.addEventListener('beforeunload', beforeUnloadHandler);
@@ -1968,11 +323,14 @@ export default function GiveExam() {
 
   useEffect(() => {
     const onUnload = () => {
-      if (!submitted && !alreadySubmitted) handleSubmit();
+      if (!submitted && !alreadySubmitted && exam) {
+        // Call handleSubmit with window closing flag for sendBeacon
+        handleSubmit(true);
+      }
     };
     window.addEventListener('unload', onUnload);
     return () => window.removeEventListener('unload', onUnload);
-  }, [submitted, alreadySubmitted, handleSubmit]);
+  }, [submitted, alreadySubmitted, handleSubmit, exam]);
 
   useEffect(() => {
     if (!exam || submitted || alreadySubmitted) return;
@@ -1982,6 +340,91 @@ export default function GiveExam() {
     };
   }, [exam, submitted, alreadySubmitted, handleSubmit]);
 
+  // START: UPDATED CODE FOR MINIMIZE/FOCUS CHANGE AND STRICT RESIZE
+  useEffect(() => {
+    if (submitted || alreadySubmitted || !exam) return;
+
+    // Store initial window dimensions
+    const initialWidth = window.innerWidth;
+    const initialHeight = window.innerHeight;
+    const initialOuterWidth = window.outerWidth;
+    const initialOuterHeight = window.outerHeight;
+    
+    // Check if device is mobile/tablet
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                     window.innerWidth <= 768;
+
+    console.log(`Initial window size: ${initialWidth}x${initialHeight}, Mobile: ${isMobile}`);
+
+    // Blur event handler (minimize/focus change/app switch)
+    const blurEventHandler = () => {
+      console.log('Window blur detected (minimize/focus change/app switch), auto-submitting...');
+      handleSubmit();
+    };
+
+    // Strict window resize detection - NO TOLERANCE for desktop
+    const resizeEventHandler = () => {
+      // Skip ALL resize detection on mobile devices
+      if (isMobile) {
+        console.log('Mobile device detected - skipping resize detection');
+        return;
+      }
+
+      const currentWidth = window.innerWidth;
+      const currentHeight = window.innerHeight;
+      const currentOuterWidth = window.outerWidth;
+      const currentOuterHeight = window.outerHeight;
+
+      // Desktop: ZERO tolerance - even 1px change triggers submit
+      const widthChanged = currentWidth !== initialWidth;
+      const heightChanged = currentHeight !== initialHeight;
+      const outerWidthChanged = currentOuterWidth !== initialOuterWidth;
+      const outerHeightChanged = currentOuterHeight !== initialOuterHeight;
+      
+      if (widthChanged || heightChanged || outerWidthChanged || outerHeightChanged) {
+        console.log(`Desktop window resize detected: ${initialWidth}x${initialHeight} → ${currentWidth}x${currentHeight}, auto-submitting...`);
+        handleSubmit();
+      }
+    };
+
+    // Fullscreen change detection (desktop only)
+    const fullscreenChangeHandler = () => {
+      if (isMobile) return; // Skip on mobile
+      
+      // If user exits fullscreen mode
+      if (!document.fullscreenElement && !document.webkitFullscreenElement && 
+          !document.mozFullScreenElement && !document.msFullscreenElement) {
+        console.log('Desktop fullscreen mode exited, auto-submitting...');
+        handleSubmit();
+      }
+    };
+    
+    // Add event listeners
+    window.addEventListener('blur', blurEventHandler);
+    
+    // Only add resize detection for desktop
+    if (!isMobile) {
+      window.addEventListener('resize', resizeEventHandler);
+      document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+      document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+      document.addEventListener('mozfullscreenchange', fullscreenChangeHandler);
+      document.addEventListener('MSFullscreenChange', fullscreenChangeHandler);
+    }
+
+    return () => {
+      window.removeEventListener('blur', blurEventHandler);
+      
+      if (!isMobile) {
+        window.removeEventListener('resize', resizeEventHandler);
+        document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
+        document.removeEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+        document.removeEventListener('mozfullscreenchange', fullscreenChangeHandler);
+        document.removeEventListener('MSFullscreenChange', fullscreenChangeHandler);
+      }
+    };
+  }, [submitted, alreadySubmitted, exam, handleSubmit]);
+  // END: UPDATED CODE
+
   useEffect(() => {
     window.history.pushState(null, '', window.location.href);
     window.onpopstate = () => {
@@ -1989,12 +432,13 @@ export default function GiveExam() {
     };
     return () => { window.onpopstate = null; };
   }, [submitted, alreadySubmitted, handleSubmit]);
+    
 
   useEffect(() => {
     if (!examId) return;
     (async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         const res = await fetch(`${API_URL}/api/exams/${examId}/progress`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -2013,7 +457,7 @@ export default function GiveExam() {
     if (!examId) return navigate(-1);
     (async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token =sessionStorage.getItem('token');
         const res = await fetch(`${API_URL}/api/exams/${examId}/student`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -2036,7 +480,15 @@ export default function GiveExam() {
 
   useEffect(() => {
     if (exam && timeLeft == null && !alreadySubmitted) {
-      setTimeLeft(exam.duration * 60);
+      const scheduled = new Date(exam.scheduleDate);
+      if (exam.scheduleTime) {
+        const [hh, mm] = exam.scheduleTime.split(':').map(Number);
+        scheduled.setHours(hh, mm, 0, 0);
+      }
+      const endTime = new Date(scheduled.getTime() + exam.duration * 60000);
+      const now = new Date();
+      const remaining = Math.floor((endTime - now) / 1000);
+      setTimeLeft(remaining > 0 ? remaining : 0);
     }
   }, [exam, timeLeft, alreadySubmitted]);
 
@@ -2052,7 +504,7 @@ export default function GiveExam() {
 
   useEffect(() => {
     if (!submitted && exam && timeLeft != null) {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       fetch(`${API_URL}/api/exams/${examId}/progress`, {
         method: 'POST',
         headers: {
@@ -2066,106 +518,239 @@ export default function GiveExam() {
 
   useEffect(() => {
     if (exam && !submitted && !alreadySubmitted) {
-      const token = localStorage.getItem('token');
+      const token = sessionStorage.getItem('token');
       const iv = setInterval(async () => {
-        const res = await fetch(`${API_URL}/api/cheats/me?exam=${examId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok && (await res.json()).cheated) {
-          handleSubmit();
+        try {
+          const res = await fetch(`${API_URL}/api/cheats/me?exam=${examId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (res.ok && (await res.json()).cheated) {
+            console.log('🚨 CHEAT DETECTED - Auto-submitting exam!');
+            handleSubmit();
+          }
+        } catch (error) {
+          console.error('Cheat check failed:', error);
         }
-      }, 5000);
+      }, 1000); // Check every 1 second instead of 5 seconds
       return () => clearInterval(iv);
     }
   }, [exam, submitted, alreadySubmitted, examId, API_URL, handleSubmit]);
 
   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
   const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
-  const streamUrl = `${YOLO_BACKEND_URL}/video_feed?exam=${examId}&token=${encodeURIComponent(localStorage.getItem('token'))}`;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col lg:flex-row">
-      {/* Side panel */}
-      <div className="w-full lg:w-80 bg-white p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
-        <div className="bg-black mb-4 rounded-lg overflow-hidden relative" style={{ paddingTop:'100%' }}>
-          <img
-            ref={imgRef}
-            src={streamUrl}
-            alt="Proctoring"
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      {/* Enhanced Side panel with border */}
+      <div className="w-full lg:w-80 bg-white border-r-4 border-slate-200 shadow-lg p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
+        {/* Camera section with subtle styling */}
+        <div className="bg-slate-900 mb-6 rounded-xl overflow-hidden relative shadow-lg border-2 border-slate-300" style={{ paddingTop:'75%' }}>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
             className="absolute inset-0 w-full h-full object-cover"
-            onLoad={()=>setFeedLoaded(true)}
           />
-          {!feedLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black">
-              <BiLoaderAlt className="animate-spin text-white text-4xl"/>
+          <canvas
+            ref={canvasRef}
+            className="hidden"
+          />
+          {cameraStatus === 'loading' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900">
+              <div className="text-center">
+                <BiLoaderAlt className="animate-spin text-blue-400 text-4xl mb-2 mx-auto"/>
+                <div className="text-white text-sm">Initializing...</div>
+              </div>
             </div>
           )}
+          {cameraStatus === 'error' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-white text-center p-4">
+              <div>
+                <div className="text-red-400 mb-2 text-3xl">📷</div>
+                <div className="text-sm">Camera Unavailable</div>
+              </div>
+            </div>
+          )}
+          {cameraStatus === 'inactive' && (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-900 text-white text-center p-4">
+              <div>
+                <div className="text-slate-400 mb-2 text-3xl">📷</div>
+                <div className="text-sm">Camera Inactive</div>
+              </div>
+            </div>
+          )}
+          {/* Enhanced status indicator */}
+          <div className="absolute top-3 right-3 flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
+              cameraStatus === 'active' && aiServerStatus === 'active' 
+                ? 'bg-emerald-400 animate-pulse shadow-lg shadow-emerald-400/50' 
+                : 'bg-amber-400 animate-pulse shadow-lg shadow-amber-400/50'
+            }`}></div>
+            <span className="text-white text-xs bg-black/40 px-2 py-1 rounded-md backdrop-blur-sm">
+              {cameraStatus === 'active' && aiServerStatus === 'active' ? 'LIVE' : 'OFFLINE'}
+            </span>
+          </div>
         </div>
-        <div className="text-4xl font-mono mb-2 text-center">{timeLeft!=null?fmt(timeLeft):'--:--'}</div>
-        <div className="w-full bg-gray-200 h-2 rounded-full">
-          <div
-            className="bg-[#002855] h-2 rounded-full transition-all duration-500"
-            style={{ width: exam ? `${((exam.duration*60 - (timeLeft||0))/(exam.duration*60))*100}%` : '0%' }}
-          />
-        </div>
-      </div>
-      {/* Main content */}
-      <div className="flex-1 p-6 lg:p-12 overflow-auto">
-        {!exam ? (
-          <div className="text-center text-gray-500">Loading exam…</div>
-        ) : submitted || alreadySubmitted ? (
+        
+        {/* Enhanced timer section */}
+        <div className="bg-slate-800 text-white p-4 rounded-xl mb-4 shadow-lg border border-slate-300">
           <div className="text-center">
-            <h2 className="text-4xl font-bold text-[#002855] mb-4">Your Score</h2>
-            <p className="text-2xl mb-6">{score} / {exam.questions.length}</p>
+            <div className="text-xs uppercase tracking-wider text-slate-300 mb-1">Time Remaining</div>
+            <div className="text-3xl font-mono font-bold tracking-wider">
+              {timeLeft != null ? fmt(timeLeft) : '--:--'}
+            </div>
+          </div>
+        </div>
+        
+        {/* Animated progress bar */}
+        <div className="bg-slate-100 p-3 rounded-lg border border-slate-200 shadow-sm">
+          <div className="flex justify-between text-xs text-slate-600 mb-2">
+            <span>Progress</span>
+            <span>{exam ? Math.round(((exam.duration*60 - (timeLeft||0))/(exam.duration*60))*100) : 0}%</span>
+          </div>
+          <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+            <div
+              className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-1000 ease-out relative"
+              style={{ width: exam ? `${((exam.duration*60 - (timeLeft||0))/(exam.duration*60))*100}%` : '0%' }}
+            >
+              <div className="absolute inset-0 bg-white/30 animate-pulse rounded-full"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Exam info */}
+        {exam && (
+          <div className="mt-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <div className="text-sm text-slate-600 space-y-1">
+              <div className="flex justify-between">
+                <span>Questions:</span>
+                <span className="font-medium text-slate-800">{exam.questions?.length || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Answered:</span>
+                <span className="font-medium text-blue-600">{Object.keys(answers).length}</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      {/* Main content with professional styling */}
+      <div className="flex-1 p-6 lg:p-12 overflow-auto bg-white">
+        {!exam ? (
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="text-center">
+              <BiLoaderAlt className="animate-spin text-slate-400 text-5xl mb-4 mx-auto"/>
+              <div className="text-xl font-medium text-slate-600">Loading Exam...</div>
+              <div className="text-slate-500 mt-1">Please wait</div>
+            </div>
+          </div>
+        ) : submitted || alreadySubmitted ? (
+          <div className="max-w-3xl mx-auto">
+            {/* Results header - professional and clean */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 rounded-full mb-4">
+                <span className="text-2xl text-emerald-600">✓</span>
+              </div>
+              <h2 className="text-3xl font-bold text-slate-800 mb-2">Exam Completed</h2>
+              <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm inline-block">
+                <div className="text-lg text-slate-600 mb-1">Your Score</div>
+                <div className="text-4xl font-bold text-slate-800">
+                  {score} / {exam.questions.length}
+                </div>
+                <div className="text-sm text-slate-500 mt-1">
+                  {Math.round((score / exam.questions.length) * 100)}% Correct
+                </div>
+              </div>
+            </div>
+
+            {/* Answer review - same size as original but better styling */}
             {exam.questions.map((q,i) => (
-              <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-6 max-w-2xl mx-auto text-left">
-                <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
-                <ul className="list-disc list-inside space-y-2">
+              <div key={i} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6 hover:shadow-md transition-shadow">
+                <h3 className="text-xl font-semibold text-slate-800 mb-4">Q{i+1}. {q.questionText}</h3>
+                <div className="space-y-2">
                   {q.options.map((opt,j) => {
                     const corr = j===q.correctAnswerIndex;
                     const cho = answers[i]===j;
                     return (
-                      <li key={j} className={corr?'text-green-600':cho?'text-red-600':''}>
-                        {opt} {corr?'✔️':cho?'❌':''}
-                      </li>
+                      <div key={j} className={`p-3 rounded-lg border ${
+                        corr 
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                          : cho 
+                          ? 'bg-red-50 border-red-200 text-red-800'
+                          : 'bg-slate-50 border-slate-200 text-slate-700'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span>{opt}</span>
+                          <div className="flex items-center space-x-1">
+                            {corr && <span className="text-emerald-600 font-medium">✓ Correct</span>}
+                            {cho && !corr && <span className="text-red-600 font-medium">✗ Your Answer</span>}
+                          </div>
+                        </div>
+                      </div>
                     );
                   })}
-                </ul>
+                </div>
               </div>
             ))}
           </div>
         ) : (
           <>
+            {/* MCQ Cards - same size but professional styling */}
             {exam.questions.map((q,i) => (
-              <div key={i} className="bg-white rounded-xl shadow-md p-6 mb-8">
-                <h3 className="text-2xl font-semibold text-[#002855] mb-3">Q{i+1}. {q.questionText}</h3>
+              <div key={i} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6 hover:shadow-md transition-all duration-200 hover:border-slate-300">
+                <h3 className="text-xl font-semibold text-slate-800 mb-4">Q{i+1}. {q.questionText}</h3>
                 <div className="space-y-3">
                   {q.options.map((opt,j) => (
-                    <label key={j} className="flex items-center space-x-3">
+                    <label key={j} className={`group flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all duration-150 ${
+                      answers[i] === j
+                        ? 'bg-blue-50 border-blue-200 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 hover:bg-blue-25 hover:border-blue-100'
+                    }`}>
                       <input
                         type="radio"
-                        checked={answers[i]===j}
-                        onChange={()=>handleChange(i,j)}
-                        className="accent-[#002855] h-5 w-5"
+                        checked={answers[i] === j}
+                        onChange={() => handleChange(i,j)}
+                        className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 focus:ring-2"
                       />
-                      <span>{opt}</span>
+                      <span className={`flex-1 ${
+                        answers[i] === j ? 'text-blue-800 font-medium' : 'text-slate-700'
+                      }`}>
+                        {opt}
+                      </span>
                     </label>
                   ))}
                 </div>
               </div>
             ))}
-            <div className="text-center mt-6">
+            
+            {/* Submit button - professional styling */}
+            <div className="text-center mt-8 pb-8">
               <button
                 onClick={handleSubmit}
                 disabled={submitted}
-                className={`px-8 py-3 text-lg rounded transition ${
+                className={`px-8 py-3 text-lg font-medium rounded-lg transition-all duration-200 ${
                   submitted
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-[#002855] hover:bg-[#001f47] text-white'
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                    : 'bg-slate-800 hover:bg-slate-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                 }`}
               >
-                {submitted ? 'Submitted' : 'Submit'}
+                {submitted ? (
+                  <>
+                    <BiLoaderAlt className="inline animate-spin mr-2" />
+                    Submitted
+                  </>
+                ) : (
+                  'Submit Exam'
+                )}
               </button>
+              
+              {/* Progress indicator */}
+              {!submitted && Object.keys(answers).length < exam.questions.length && (
+                <div className="mt-4 text-sm text-amber-600 bg-amber-50 inline-block px-3 py-2 rounded-md border border-amber-200">
+                  {exam.questions.length - Object.keys(answers).length} questions remaining
+                </div>
+              )}
             </div>
           </>
         )}

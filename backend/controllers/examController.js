@@ -1,4 +1,4 @@
-// File: controllers/examController.js
+// File: backend/controllers/examController.js
 
 const multer   = require('multer');
 const fs       = require('fs');
@@ -17,11 +17,12 @@ const seedrandom = require('seedrandom');
 /**
  * Normalize any “quiz” + number input into “Quiz No. XX”
  */
+
 function normalizeExamNo(raw) {
   const m = raw.match(/\d+/);
   if (!m) return raw.trim();
   const num = m[0].padStart(2, '0');
-  return `Quiz No. ${num}`;
+  return `Quiz ${num}`;
 }
 
 /**
@@ -168,12 +169,26 @@ exports.createExam = async (req, res) => {
       });
     }
 
+    // Check for duplicate exam number in the same subject
+    const existingExam = await Exam.findOne({
+      subject: subjectId,
+      examNo: examNo,
+    }).lean();
+
+    if (existingExam) {
+      return res.status(409).json({
+        message: `An exam with number "${examNo}" already exists for this subject`
+      });
+    }
+
     const newExam = new Exam({
       year,
       semester,
       session,
       subject: subjectId,
-      assignedStudents: subjectDoc.students,
+      assignedStudents: req.body.excludedStudents 
+        ? subjectDoc.students.filter(studentId => !req.body.excludedStudents.includes(studentId.toString()))
+        : subjectDoc.students,
       examNo,
       questions,
       assignedSemester,
@@ -305,6 +320,19 @@ exports.updateExamById = async (req, res) => {
       });
     }
 
+    // Check for duplicate exam number in the same subject (excluding current exam)
+    const existingExam = await Exam.findOne({
+      subject: subjectId,
+      examNo: examNo,
+      _id: { $ne: examId }, // Exclude current exam from check
+    }).lean();
+
+    if (existingExam) {
+      return res.status(409).json({
+        message: `An exam with number "${examNo}" already exists for this subject`
+      });
+    }
+
     let updatedExam = await Exam.findByIdAndUpdate(
       examId,
       {
@@ -312,7 +340,9 @@ exports.updateExamById = async (req, res) => {
         semester,
         session,
         subject: subjectId,
-        assignedStudents: subjectDoc.students,
+        assignedStudents: req.body.excludedStudents 
+          ? subjectDoc.students.filter(studentId => !req.body.excludedStudents.includes(studentId.toString()))
+          : subjectDoc.students,
         examNo,
         questions,
         assignedSemester,
@@ -437,9 +467,12 @@ exports.getAvailableExams = async (req, res) => {
       .lean();
     const subjectIds = subs.map(s => s._id);
 
-    // 2) Pull every exam in those subjects, with subject.name
+    // 2) Pull every exam in those subjects where student is assigned, with subject.name
     let exams = await Exam
-      .find({ subject: { $in: subjectIds } })
+      .find({ 
+        subject: { $in: subjectIds },
+        assignedStudents: req.user.id  // Only exams where student is assigned
+      })
       .populate('subject', 'name')
       .lean();
 
