@@ -49,20 +49,23 @@ const getStatus = (exam, dateTime) => {
   const storageKey = `submission_${exam._id}`;
   const submissionId = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey) || exam.submissionId;
 
-  if (submissionId || exam?.attempted) return 'Attempted';
   if (!dateTime) return '';
 
   const now = new Date();
   const examStart = new Date(dateTime);
-  const examEnd = new Date(examStart.getTime() + (exam.duration * 60 * 1000));
+  const examEnd = new Date(examStart.getTime() + exam.duration * 60 * 1000);
 
+  // Before start
   if (now < examStart) return 'Scheduled';
-  if (now >= examStart && now <= examEnd) return 'Ongoing';
 
-  // If current time is after exam end time and submission exists, show as Attempted
-  if (now > examEnd && submissionId) return 'Attempted';
+  // During the exam window
+  if (now >= examStart && now <= examEnd) {
+    return submissionId || exam?.attempted ? 'Attempted' : 'Ongoing';
+  }
 
-  return 'Ongoing';
+  // After the exam window
+  if (submissionId || exam?.attempted) return 'Attempted';
+  return 'Missed';
 };
 
 export default function TestPage() {
@@ -243,11 +246,31 @@ export default function TestPage() {
       if (e.key && e.key.startsWith('submission_')) bump();
     };
 
-    // Passive 1-second polling checks all current exams for submission keys
+    // Passive 1-second polling:
+    //   1️⃣ Detect new submissions (as before)
+    //   2️⃣ Detect end-time expiry → forces re-render so status becomes "Missed"
     const poll = () => {
-      const changed = exams.some(ex =>
-        Boolean(sessionStorage.getItem(`submission_${ex._id}`) || localStorage.getItem(`submission_${ex._id}`))
-      );
+      const now = Date.now();
+      const changed = exams.some(ex => {
+        // 1️⃣ Any submission entry
+        const attempted = Boolean(
+          sessionStorage.getItem(`submission_${ex._id}`) ||
+          localStorage.getItem(`submission_${ex._id}`) ||
+          ex.submissionId
+        );
+
+        if (attempted) return true;
+
+        // 2️⃣ End-time passed without submission → should transition to "Missed"
+        const dt = new Date(ex.scheduleDate);
+        if (ex.scheduleTime) {
+          const [h, m] = ex.scheduleTime.split(':').map(Number);
+          dt.setHours(h, m, 0, 0);
+        }
+        const end = dt.getTime() + ex.duration * 60 * 1000;
+        return now > end;
+      });
+
       if (changed) bump();
     };
     const iv = setInterval(poll, 1000);
@@ -477,25 +500,51 @@ export function ActionButton({ exam }) {
     return dt;
   }, [exam.scheduleDate, exam.scheduleTime]);
 
+  /* ---------------------------------------------------------
+   * Timing helpers
+   * -------------------------------------------------------*/
   const now = Date.now();
-  const tooEarly = now < scheduled.getTime();
+  const examStartTime = scheduled.getTime();
+  const examEndTime   = examStartTime + exam.duration * 60 * 1000;
+
+  // 1️⃣  Ready to start? (before start ➜ false until start time)
+  const tooEarly = now < examStartTime;
   const [ready, setReady] = useState(!tooEarly);
 
   useEffect(() => {
     if (tooEarly) {
-      const ms = scheduled.getTime() - Date.now();
+      const ms = examStartTime - Date.now();
       const timer = setTimeout(() => setReady(true), ms);
       return () => clearTimeout(timer);
     }
-  }, [tooEarly, scheduled]);
+  }, [tooEarly, examStartTime]);
 
-  const isDisabled = !attempted && !ready;
+  // 2️⃣  Mark exam as expired (missed) when end time passes without submission
+  const [expired, setExpired] = useState(() => !attempted && Date.now() >= examEndTime);
+
+  useEffect(() => {
+    if (attempted) return; // irrelevant if already attempted
+    const now = Date.now();
+    if (now >= examEndTime) {
+      setExpired(true);
+      return;
+    }
+    const timer = setTimeout(() => setExpired(true), examEndTime - now);
+    return () => clearTimeout(timer);
+  }, [attempted, examEndTime]);
+
+  /* ---------------------------------------------------------
+   * Button behaviour & presentation
+   * -------------------------------------------------------*/
+  const isDisabled = attempted ? false : (!ready || expired);
+
+  const label = attempted ? 'View Answers' : (expired ? 'Missed' : 'Start Test');
 
   const handleClick = async e => {
     e.stopPropagation();
     if (attempted) {
       navigate(`/view-answers/${submissionId}`);
-    } else if (ready) {
+    } else if (!attempted && ready && !expired) {
       try {
         // Check camera permission
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -555,7 +604,7 @@ export function ActionButton({ exam }) {
       }`}
       title={!ready && !attempted ? `Available at ${scheduled.toLocaleString()}` : ''}
     >
-      {attempted ? 'View Answers' : 'Start Test'}
+      {label}
     </button>
   );
 }
@@ -569,6 +618,8 @@ const StatusBadge = ({ status }) => {
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'Scheduled':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Missed':
+        return 'bg-red-100 text-red-800 border-red-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
