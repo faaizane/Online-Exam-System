@@ -123,6 +123,19 @@ export default function TestPage() {
           next = subject ? allExams.filter(ex => ex.subjectName === subject) : allExams;
         }
 
+        // 👉 Sort so the most recent exam appears first
+        next.sort((a, b) => {
+          const getTime = (ex) => {
+            const dt = new Date(ex.scheduleDate);
+            if (ex.scheduleTime) {
+              const [h, m] = ex.scheduleTime.split(':').map(Number);
+              dt.setHours(h, m, 0, 0);
+            }
+            return dt.getTime();
+          };
+          return getTime(b) - getTime(a); // Descending order (latest first)
+        });
+
         setExams(next);
         // Force children re-render keys so UI updates cleanly
         setRefreshKey(k => k + 1);
@@ -315,7 +328,7 @@ export default function TestPage() {
 const Layout = ({ children, sidebarOpen, toggleSidebar }) => (
   <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
     <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
-    <div className="flex-1 flex flex-col [@media(min-width:845px)]:ml-64">
+    <div className="flex-1 flex flex-col [@media(min-width:945px)]:ml-64">
       <SHeader toggleSidebar={toggleSidebar} />
       <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">{children}</div>
     </div>

@@ -52,7 +52,7 @@ export default function SHeader({ toggleSidebar }) {
         <div
           onClick={() => setShowNotice(true)}
           className="flex items-center gap-1 cursor-pointer 
-                     [@media(max-width:800px)]:order-2"
+                     [@media(max-width:500px)]:order-2"
           title="View Notice"
         >
           <div className="bg-[#f3dede] rounded-full w-9 h-9 flex items-center justify-center 
