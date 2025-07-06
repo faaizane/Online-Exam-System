@@ -78,8 +78,23 @@ export default function TestPage() {
   // 1) Exams that were navigated via <Link/>, keeps behaviour for in-app navigation
   const locationExams = state?.exams ?? (state?.exam ? [state.exam] : []);
 
-  // 2) Make it stateful so we can later refresh from backend
-  const [exams, setExams] = useState(locationExams);
+  // 🔄 Helper: sort exams so the most recent one appears first (descending by date/time)
+  const sortByDateDesc = (arr) => {
+    return [...arr].sort((a, b) => {
+      const getTime = (ex) => {
+        const dt = new Date(ex.scheduleDate);
+        if (ex.scheduleTime) {
+          const [h, m] = ex.scheduleTime.split(':').map(Number);
+          dt.setHours(h, m, 0, 0);
+        }
+        return dt.getTime();
+      };
+      return getTime(b) - getTime(a); // Descending order (latest first)
+    });
+  };
+
+  // 2) Make it stateful so we can later refresh from backend (already sorted)
+  const [exams, setExams] = useState(() => sortByDateDesc(locationExams));
 
   const [subId, setSubId] = useState(() => {
     const first = locationExams[0];
@@ -126,20 +141,10 @@ export default function TestPage() {
           next = subject ? allExams.filter(ex => ex.subjectName === subject) : allExams;
         }
 
-        // 👉 Sort so the most recent exam appears first
-        next.sort((a, b) => {
-          const getTime = (ex) => {
-            const dt = new Date(ex.scheduleDate);
-            if (ex.scheduleTime) {
-              const [h, m] = ex.scheduleTime.split(':').map(Number);
-              dt.setHours(h, m, 0, 0);
-            }
-            return dt.getTime();
-          };
-          return getTime(b) - getTime(a); // Descending order (latest first)
-        });
+        // Re-use helper for consistent ordering
+        const sortedNext = sortByDateDesc(next);
 
-        setExams(next);
+        setExams(sortedNext);
         // Force children re-render keys so UI updates cleanly
         setRefreshKey(k => k + 1);
       } catch (err) {
