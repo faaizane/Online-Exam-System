@@ -39,7 +39,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       style={{ height: '100vh' }}
       className={`
         fixed inset-y-0 left-0
-        w-48 md:w-64
+        w-56 md:w-64
         bg-[#002855] text-white z-40
 
         /* slide in/out below 945px */
@@ -47,15 +47,19 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         [@media(min-width:945px)]:translate-x-0
 
         transition-transform duration-200 ease-in-out
-        flex flex-col justify-between overflow-hidden pb-6
+        flex flex-col justify-between overflow-hidden pb-4 md:pb-6
       `}
     >
       {/* Top: close button on <945px */}
       <div>
         <div className="flex items-center justify-between px-2 py-2 [@media(min-width:945px)]:hidden">
           <span className="text-white font-semibold text-lg">Menu</span>
-          <button onClick={toggleSidebar}>
-            <i className="fa-solid fa-times text-xl"></i>
+          <button onClick={toggleSidebar} className="focus:outline-none">
+            <i
+              className={`fa-solid fa-circle-xmark text-2xl transition-transform duration-300 ${
+                isOpen ? 'rotate-0' : 'rotate-90 scale-75'
+              }`}
+            ></i>
           </button>
         </div>
 
@@ -69,7 +73,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
         </div>
 
         {/* Teacher Navigation links */}
-        <nav className="flex flex-col gap-1 md:gap-2 mt-2 md:mt-4 px-0">
+        <nav className="flex flex-col gap-1 md:gap-2 mt-2 md:mt-4 px-0 overflow-y-auto">
           <Link to="/tdashboard" className={linkClass('/tdashboard')} onClick={(e) => handleLinkClick('/tdashboard', e)}>
             <i className="fa-solid fa-house mr-3 text-lg md:text-base"></i>
             Dashboard
