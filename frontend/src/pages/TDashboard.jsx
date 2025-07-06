@@ -36,6 +36,13 @@ export default function TDashboard() {
 
   const toggleSidebar = () => setSidebarOpen(o => !o);
   const formatDate = iso => new Date(iso).toLocaleDateString('en-GB');
+  const formatDateSimple = iso => {
+    const date = new Date(iso);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
   const toOrdinal = n => {
     const s = ["th","st","nd","rd"], v = n % 100;
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
@@ -154,7 +161,7 @@ export default function TDashboard() {
                   <div key={i} className="bg-white rounded-xl shadow-md p-4 divide-y divide-gray-200">
                     <Row label="Subject:" value={subj} />
                     <Row label="Exam No.:" value={exam.examNo} />
-                    <Row label="Date:" value={formatDate(exam.scheduleDate)} />
+                    <Row label="Date:" value={formatDateSimple(exam.scheduleDate)} />
                     <Row label="Semester:" value={toOrdinal(semNum)} />
                     <Row label="Total Students:" value={total} />
                     <Row
@@ -204,7 +211,7 @@ export default function TDashboard() {
                       <tr key={i} className="hover:bg-gray-50 border-t">
                         <td className="p-3">{subj}</td>
                         <td className="p-3">{exam.examNo}</td>
-                        <td className="p-3">{formatDate(exam.scheduleDate)}</td>
+                        <td className="p-3">{formatDateSimple(exam.scheduleDate)}</td>
                         <td className="p-3">{toOrdinal(semNum)}</td>
                         <td className="p-3">{total}</td>
                         <td className="p-3">
@@ -246,7 +253,7 @@ export default function TDashboard() {
                   <Row label="Subject:" value={c.subject} />
                   <Row label="Exam No.:" value={c.exam} />
                   <Row label="Semester:" value={toOrdinal(c.semester)} />
-                  <Row label="Date:" value={c.date} />
+                  <Row label="Date:" value={formatDateSimple(c.date)} />
                   <div className="text-right pt-3">
                     <button
                       onClick={() => viewVideo(c.id)}
@@ -282,7 +289,7 @@ export default function TDashboard() {
                       <td className="p-3">{c.subject}</td>
                       <td className="p-3">{c.exam}</td>
                       <td className="p-3">{toOrdinal(c.semester)}</td>
-                      <td className="p-3">{c.date}</td>
+                      <td className="p-3">{formatDateSimple(c.date)}</td>
                       <td className="p-3">
                         <button
                           onClick={() => viewVideo(c.id)}

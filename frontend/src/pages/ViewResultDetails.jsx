@@ -5,6 +5,13 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
 import SHeader from '../components/SHeader';
 
+// Utility function to convert numbers to ordinal strings
+function getOrdinalSuffix(num) {
+  const suffixes = ['th', 'st', 'nd', 'rd'];
+  const value = num % 100;
+  return num + (suffixes[(value - 20) % 10] || suffixes[value] || suffixes[0]);
+}
+
 export default function ViewResultDetail() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const toggleSidebar = () => setSidebarOpen(o => !o);
@@ -24,7 +31,9 @@ export default function ViewResultDetail() {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
-      .then(data => setResults(data))
+      .then(data => {
+        setResults(data);
+      })
       .catch(console.error);
   }, [subjectId, token, API_BASE_URL]);
 
@@ -64,7 +73,7 @@ export default function ViewResultDetail() {
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="font-semibold text-[#002855]">Semester:</span>
-                  <span>{r.semester}</span>
+                  <span>{getOrdinalSuffix(r.semester)}</span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="font-semibold text-[#002855]">Date:</span>
@@ -77,7 +86,7 @@ export default function ViewResultDetail() {
                 <div className="text-right pt-2">
                   <button
                     onClick={() => navigate(`/view-answers/${r.submissionId}`)}
-                    className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition"
+                    className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition cursor-pointer"
                   >
                     View Answers
                   </button>
@@ -104,13 +113,13 @@ export default function ViewResultDetail() {
                   <tr key={i} className="border-t hover:bg-gray-50">
                     <td className="p-3">{r.subjectName}</td>
                     <td className="p-3">{r.examNo}</td>
-                    <td className="p-3">{r.semester}</td>
+                    <td className="p-3">{getOrdinalSuffix(r.semester)}</td>
                     <td className="p-3">{new Date(r.date).toLocaleDateString()}</td>
                     <td className="p-3">{r.marks}</td>
                     <td className="p-3">
                       <button
                         onClick={() => navigate(`/view-answers/${r.submissionId}`)}
-                        className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-blue-700 transition"
+                        className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-blue-700 transition cursor-pointer"
                       >
                         View Answers
                       </button>

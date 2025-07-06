@@ -95,7 +95,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
       {/* Bottom: logout always at bottom */}
       <div className="px-4 md:px-8 py-2 md:py-4">
-        <button onClick={handleLogout} className={linkClass('/logout')}>
+        <button onClick={handleLogout} className={`${linkClass('/logout')} cursor-pointer`}>
           <i className="fa-solid fa-right-from-bracket mr-3 text-lg md:text-base"></i>
           Logout
         </button>

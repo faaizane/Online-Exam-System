@@ -34,6 +34,14 @@ export default function ExamSchedule() {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const toggleSidebar = () => setSidebarOpen(o => !o);
 
+  const formatDateSimple = iso => {
+    const date = new Date(iso);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   const formatTime = timeStr => {
     const [h, m] = timeStr.split(':').map(Number);
     const suffix = h >= 12 ? 'PM' : 'AM';
@@ -120,7 +128,7 @@ export default function ExamSchedule() {
                             <td className="p-4">{subj}</td>
                             <td className="p-4">{exam.examNo}</td>
                             <td className="p-4">{exam.duration} min</td>
-                            <td className="p-4">{new Date(exam.scheduleDate).toLocaleDateString()}</td>
+                            <td className="p-4">{formatDateSimple(exam.scheduleDate)}</td>
                             <td className="p-4">{formatTime(exam.scheduleTime)}</td>
                             <td className="p-4">
                               <StatusBadge status={exam.status} />
@@ -173,7 +181,7 @@ export default function ExamSchedule() {
                         </div>
                         <p><strong>Exam No.:</strong> {exam.examNo}</p>
                         <p><strong>Duration:</strong> {exam.duration} min</p>
-                        <p><strong>Date:</strong> {new Date(exam.scheduleDate).toLocaleDateString()}</p>
+                        <p><strong>Date:</strong> {formatDateSimple(exam.scheduleDate)}</p>
                         <p><strong>Time:</strong> {formatTime(exam.scheduleTime)}</p>
                         <div>
                           <StatusBadge status={exam.status} />
@@ -216,14 +224,14 @@ export default function ExamSchedule() {
                             <td className="p-4">{subj}</td>
                             <td className="p-4">{exam.examNo}</td>
                             <td className="p-4">{exam.duration} min</td>
-                            <td className="p-4">{new Date(exam.scheduleDate).toLocaleDateString()}</td>
+                            <td className="p-4">{formatDateSimple(exam.scheduleDate)}</td>
                             <td className="p-4">{formatTime(exam.scheduleTime)}</td>
                             <td className="p-4">
                               <Link
                                 to="/viewresults"
                                 state={{ examId: exam._id, title: `${exam.examNo} – ${subj}` }}
                               >
-                                <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition">
+                                <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition cursor-pointer">
                                   View
                                 </button>
                               </Link>
@@ -244,10 +252,10 @@ export default function ExamSchedule() {
                         <h2 className="font-semibold text-lg text-[#002855]">{subj}</h2>
                         <p><strong>Exam No.:</strong> {exam.examNo}</p>
                         <p><strong>Duration:</strong> {exam.duration} min</p>
-                        <p><strong>Date:</strong> {new Date(exam.scheduleDate).toLocaleDateString()}</p>
+                        <p><strong>Date:</strong> {formatDateSimple(exam.scheduleDate)}</p>
                         <p><strong>Time:</strong> {formatTime(exam.scheduleTime)}</p>
                         <Link to="/viewresults" state={{ examId: exam._id, title: `${exam.examNo} – ${subj}` }}>
-                          <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition">
+                          <button className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-blue-700 transition cursor-pointer">
                             View Results
                           </button>
                         </Link>

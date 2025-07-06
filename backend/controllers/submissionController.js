@@ -1,6 +1,7 @@
 // File: backend/controllers/submissionController.js
 const Submission = require('../models/Submission');
 const Cheat = require('../models/CheatClip');
+const seedrandom = require('seedrandom');
 
 /**
  * GET /api/submissions
@@ -60,7 +61,38 @@ exports.detail = async (req, res) => {
       return res.status(404).json({ message: 'Submission or related exam not found' });
     }
 
-    const detailedAnswers = sub.exam.questions.map((q, idx) => ({
+    // Apply same shuffle logic as in getExamForStudent
+    // Seed RNG with studentId+examId so it's consistent per student
+    const seed = sub.student.toString() + sub.exam._id.toString();
+    const rng = seedrandom(seed);
+
+    // Deep‐clone questions so we don't mutate DB
+    const questions = JSON.parse(JSON.stringify(sub.exam.questions));
+
+    // Fisher–Yates shuffle helper
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    // Shuffle questions
+    shuffle(questions);
+
+    // For each question, shuffle its options and adjust correctAnswerIndex
+    questions.forEach(q => {
+      // pair each option with its original index
+      const opts = q.options.map((text, idx) => ({ text, idx }));
+      shuffle(opts);
+      // find new index of the correct option
+      const newCorrect = opts.findIndex(o => o.idx === q.correctAnswerIndex);
+      // replace options and correctAnswerIndex
+      q.options = opts.map(o => o.text);
+      q.correctAnswerIndex = newCorrect;
+    });
+
+    const detailedAnswers = questions.map((q, idx) => ({
       questionText: q.questionText,
       options: q.options,
       selectedIdx: sub.answers[idx],
@@ -94,7 +126,7 @@ exports.bySubject = async (req, res) => {
     const subs = await Submission.find({ student: req.user.id })
       .populate({
         path: 'exam',
-        select: 'examNo year session subject',
+        select: 'examNo year semester session subject',
         populate: { path: 'subject', select: 'name' }
       })
       .lean();
@@ -108,7 +140,8 @@ exports.bySubject = async (req, res) => {
       submissionId: s._id,
       subjectName: s.exam.subject.name,
       examNo: s.exam.examNo,
-      semester: s.exam.session,
+      semester: s.exam.semester, // Corrected field mapping
+      session: s.exam.session, // Added session for compatibility
       date: s.createdAt,
       marks: s.score
     }));

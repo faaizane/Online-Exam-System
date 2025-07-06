@@ -39,7 +39,32 @@ export default function SDashboard() {
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-  const semLabel = n => `${n}${['st', 'nd', 'rd'][n % 10 - 1] || 'th'}`;
+  // Helper function to format semester with ordinal suffix
+  const formatSemester = (semester) => {
+    const num = parseInt(semester);
+    if (isNaN(num)) return semester;
+    
+    const suffix = (num) => {
+      if (num % 100 >= 11 && num % 100 <= 13) return 'th';
+      switch (num % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    };
+    
+    return `${num}${suffix(num)}`;
+  };
+
+  // Helper function to format date as DD-MM-YYYY
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
 
   useEffect(() => {
     const loadExams = async () => {
@@ -170,7 +195,7 @@ export default function SDashboard() {
             <div className="space-y-4 [@media(min-width:486px)]:hidden">
               {upcomingExams.length > 0 ? (
                 upcomingExams.map((e, i) => (
-                  <ExamCard key={`${e._id}-${refreshKey}`} exam={e} nav={navigate} semLabel={semLabel} />
+                  <ExamCard key={`${e._id}-${refreshKey}`} exam={e} nav={navigate} formatDate={formatDate} formatSemester={formatSemester} />
                 ))
               ) : (
                 <p className="text-center text-gray-500">No upcoming exams</p>
@@ -193,7 +218,7 @@ export default function SDashboard() {
                 </thead>
                 <tbody className="text-black text-md">
                   {upcomingExams.map((e, i) => (
-                    <ExamRow key={`${e._id}-${refreshKey}`} exam={e} nav={navigate} semLabel={semLabel} />
+                    <ExamRow key={`${e._id}-${refreshKey}`} exam={e} nav={navigate} formatDate={formatDate} formatSemester={formatSemester} />
                   ))}
                 </tbody>
               </table>
@@ -209,7 +234,7 @@ export default function SDashboard() {
             <div className="space-y-4 [@media(min-width:486px)]:hidden">
               {recentResults.length > 0 ? (
                 recentResults.map((r, i) => (
-                  <ResultCard key={i} result={r} nav={navigate} semLabel={semLabel} />
+                  <ResultCard key={i} result={r} nav={navigate} formatDate={formatDate} formatSemester={formatSemester} />
                 ))
               ) : (
                 <p className="text-center text-gray-500">No results yet</p>
@@ -231,7 +256,7 @@ export default function SDashboard() {
                 </thead>
                 <tbody className="text-black text-md">
                   {recentResults.map((r, i) => (
-                    <ResultRow key={i} result={r} nav={navigate} semLabel={semLabel} />
+                    <ResultRow key={i} result={r} nav={navigate} formatDate={formatDate} formatSemester={formatSemester} />
                   ))}
                 </tbody>
               </table>
@@ -243,7 +268,7 @@ export default function SDashboard() {
   );
 }
 
-function ExamCard({ exam, nav, semLabel }) {
+function ExamCard({ exam, nav, formatDate, formatSemester }) {
   const dt = new Date(exam.scheduleDate);
   const [h, m] = exam.scheduleTime.split(':').map(Number);
   dt.setHours(h, m);
@@ -255,8 +280,8 @@ function ExamCard({ exam, nav, semLabel }) {
     >
       <DetailRow label="Subject:" value={exam.subjectName} />
       <DetailRow label="Exam No.:" value={exam.examNo} />
-      <DetailRow label="Semester:" value={semLabel(exam.semester)} />
-      <DetailRow label="Date:" value={dt.toLocaleDateString('en-GB')} />
+      <DetailRow label="Semester:" value={formatSemester(exam.semester)} />
+      <DetailRow label="Date:" value={formatDate(exam.scheduleDate)} />
       <DetailRow
         label="Time:"
         value={dt.toLocaleTimeString([], {
@@ -271,7 +296,7 @@ function ExamCard({ exam, nav, semLabel }) {
   );
 }
 
-function ExamRow({ exam, nav, semLabel }) {
+function ExamRow({ exam, nav, formatDate, formatSemester }) {
   const dt = new Date(exam.scheduleDate);
   const [h, m] = exam.scheduleTime.split(':').map(Number);
   dt.setHours(h, m);
@@ -283,8 +308,8 @@ function ExamRow({ exam, nav, semLabel }) {
     >
       <td className="p-3">{exam.subjectName}</td>
       <td className="p-3">{exam.examNo}</td>
-      <td className="p-3">{semLabel(exam.semester)}</td>
-      <td className="p-3">{dt.toLocaleDateString('en-GB')}</td>
+      <td className="p-3">{formatSemester(exam.semester)}</td>
+      <td className="p-3">{formatDate(exam.scheduleDate)}</td>
       <td className="p-3">
         {dt.toLocaleTimeString([], {
           hour: 'numeric',
@@ -298,15 +323,15 @@ function ExamRow({ exam, nav, semLabel }) {
   );
 }
 
-function ResultCard({ result, nav, semLabel }) {
+function ResultCard({ result, nav, formatDate, formatSemester }) {
   return (
     <div className="bg-white rounded-xl shadow-md p-4 divide-y divide-gray-200">
       <DetailRow label="Subject:" value={result.subjectName} />
       <DetailRow label="Exam:" value={result.examNo} />
-      <DetailRow label="Semester:" value={semLabel(result.semester)} />
+      <DetailRow label="Semester:" value={formatSemester(result.semester)} />
       <DetailRow
         label="Date:"
-        value={new Date(result.date).toLocaleDateString()}
+        value={formatDate(result.date)}
       />
       <DetailRow label="Score:" value={result.marks} />
       <div className="text-right pt-2">
@@ -321,14 +346,14 @@ function ResultCard({ result, nav, semLabel }) {
   );
 }
 
-function ResultRow({ result, nav, semLabel }) {
+function ResultRow({ result, nav, formatDate, formatSemester }) {
   return (
     <tr className="hover:bg-gray-50 border-t">
       <td className="p-3">{result.subjectName}</td>
       <td className="p-3">{result.examNo}</td>
-      <td className="p-3">{semLabel(result.semester)}</td>
+      <td className="p-3">{formatSemester(result.semester)}</td>
       <td className="p-3">
-        {new Date(result.date).toLocaleDateString()}
+        {formatDate(result.date)}
       </td>
       <td className="p-3">{result.marks}</td>
       <td className="p-3">

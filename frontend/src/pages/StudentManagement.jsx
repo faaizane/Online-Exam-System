@@ -17,7 +17,7 @@ export default function StudentManagement() {
   const [error, setError] = useState('');
 
   const capitalize = str =>
-    !str ? '' : str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    !str ? '' : str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
 
   const ordinal = val => {
     const num = parseInt(val, 10);
@@ -83,13 +83,13 @@ export default function StudentManagement() {
         <Header toggleSidebar={toggleSidebar} />
 
         <div className="px-4 md:px-16 py-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-4xl font-bold text-[#002855]">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-[#002855]">
               Student Management
             </h1>
             <button
               onClick={() => navigate('/add-subject')}
-              className="bg-[#002855] text-white px-4 py-2 rounded shadow-sm hover:shadow-md hover:bg-[#001f47] transition"
+              className="bg-[#002855] text-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md hover:bg-[#001f47] transition-all duration-200"
             >
               + Add Subject
             </button>
@@ -98,30 +98,39 @@ export default function StudentManagement() {
           {error && <p className="text-red-600 mb-4">{error}</p>}
 
           {sortedGroups.map(({ year, session, items }) => (
-            <div key={`${year ?? 'noYear'}—${session}`} className="mb-8">
-              <h2 className="text-2xl font-semibold text-[#002855] mb-4">
-                {year != null
-                  ? `${year} — ${capitalize(session)}`
-                  : capitalize(session)}
-              </h2>
+            <div key={`${year ?? 'noYear'}—${session}`} className="mb-10">
+              <div className="border-b-2 border-gray-200 pb-2 mb-6">
+                <h2 className="text-2xl font-bold text-gray-700">
+                  {year != null
+                    ? `${year} — ${capitalize(session)}`
+                    : capitalize(session)}
+                </h2>
+              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {items.map(sub => (
                   <div
                     key={sub._id}
-                    className="bg-white rounded-xl shadow-md p-4 cursor-pointer hover:shadow-lg transition"
+                    className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden group cursor-pointer transform hover:-translate-y-1 transition-all duration-300"
                     onClick={() =>
                       navigate(`/subjects/${sub._id}/students`)
                     }
                   >
-                    <h3 className="text-xl font-semibold mb-2">
-                      {capitalize(sub.name)} — {ordinal(sub.semester)} Semester
-                    </h3>
-                    <p className="text-gray-600">
-                      {Array.isArray(sub.students)
-                        ? `${sub.students.length} students`
-                        : '0 students'}
-                    </p>
+                    <div className="p-5">
+                      <h3 className="text-xl font-semibold tracking-tight text-gray-800 truncate group-hover:text-[#002855] transition-colors duration-300">
+                        {capitalize(sub.name)}
+                      </h3>
+                      <p className="text-sm text-gray-500">
+                        {ordinal(sub.semester)} Semester
+                      </p>
+                    </div>
+                    <div className="bg-gray-50 px-5 py-3 border-t border-gray-100">
+                      <p className="text-sm text-gray-600">
+                        {Array.isArray(sub.students)
+                          ? `${sub.students.length} ${sub.students.length === 1 ? 'student' : 'students'}`
+                          : '0 students'}
+                      </p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -129,9 +138,11 @@ export default function StudentManagement() {
           ))}
 
           {!sortedGroups.length && !error && (
-            <p className="text-gray-500">
-              No subjects yet. Click “+ Add Subject” to get started.
-            </p>
+            <div className="text-center py-16">
+              <p className="text-gray-500 text-lg">
+                No subjects yet. Click “+ Add Subject” to get started.
+              </p>
+            </div>
           )}
         </div>
       </div>

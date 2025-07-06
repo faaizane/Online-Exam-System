@@ -19,6 +19,23 @@ export default function ReviewCheatingDetails() {
   const token = sessionStorage.getItem('token'); // sessionStorage for exam data
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+  const formatDateTimeSimple = timestamp => {
+    const date = new Date(timestamp);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  const formatTimeSimple = timestamp => {
+    const date = new Date(timestamp);
+    const hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${hours12}:${minutes} ${ampm}`;
+  };
+
   const viewVideo = async id => {
     try {
       const res = await fetch(`${API_BASE_URL}/api/cheats/${id}/clip`, {
@@ -96,13 +113,17 @@ export default function ReviewCheatingDetails() {
                   <span>{row.reason}</span>
                 </div>
                 <div className="py-2 flex justify-between">
+                  <span className="font-semibold text-[#002855]">Date</span>
+                  <span>{formatDateTimeSimple(row.timestamp)}</span>
+                </div>
+                <div className="py-2 flex justify-between">
                   <span className="font-semibold text-[#002855]">Time</span>
-                  <span>{new Date(row.timestamp).toLocaleString()}</span>
+                  <span>{formatTimeSimple(row.timestamp)}</span>
                 </div>
                 <div className="pt-3 text-right">
                   <button
                     onClick={() => viewVideo(row.id)}
-                    className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-[#002855] transition"
+                    className="bg-[#003366] text-white px-4 py-1.5 rounded hover:bg-[#002855] transition cursor-pointer"
                   >
                     View Video
                   </button>
@@ -126,6 +147,7 @@ export default function ReviewCheatingDetails() {
                   <th className="p-3">Subject</th>
                   <th className="p-3">Exam No</th>
                   <th className="p-3">Reason</th>
+                  <th className="p-3">Date</th>
                   <th className="p-3">Time</th>
                   <th className="p-3">Action</th>
                 </tr>
@@ -138,11 +160,12 @@ export default function ReviewCheatingDetails() {
                     <td className="p-3">{row.subjectName}</td>
                     <td className="p-3">{row.exam}</td>
                     <td className="p-3">{row.reason}</td>
-                    <td className="p-3">{new Date(row.timestamp).toLocaleString()}</td>
+                    <td className="p-3">{formatDateTimeSimple(row.timestamp)}</td>
+                    <td className="p-3">{formatTimeSimple(row.timestamp)}</td>
                     <td className="p-3">
                       <button
                         onClick={() => viewVideo(row.id)}
-                        className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-[#002855] transition"
+                        className="bg-[#003366] text-white px-3 py-1 rounded hover:bg-[#002855] transition cursor-pointer"
                       >
                         View Video
                       </button>
@@ -151,7 +174,7 @@ export default function ReviewCheatingDetails() {
                 ))}
                 {sortedIncidents.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-gray-500">
+                    <td colSpan={8} className="p-4 text-center text-gray-500">
                       No incidents in this semester.
                     </td>
                   </tr>

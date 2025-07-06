@@ -56,80 +56,98 @@ export default function ViewAnswers() {
 
           {/* ───────── Mobile / Tablet: Card view ───────── */}
           <div className="space-y-6 [@media(min-width:486px)]:hidden">
-            {detail.detailedAnswers.map((q, qi) => (
-              <div key={qi} className="bg-white rounded-xl shadow-md p-4">
-                <h2 className="font-semibold text-[#002855] mb-3">
-                  Q{qi + 1}. {q.questionText}
-                </h2>
+            {detail.detailedAnswers.map((q, qi) => {
+              const isUnattempted = q.selectedIdx === null || q.selectedIdx === undefined;
+              
+              return (
+                <div key={qi} className="bg-white rounded-xl shadow-md p-4">
+                  <h2 className="font-semibold text-[#002855] mb-3">
+                    Q{qi + 1}. {q.questionText}
+                    {isUnattempted && (
+                      <span className="ml-2 text-yellow-600 font-medium text-sm">
+                        (Unattempted)
+                      </span>
+                    )}
+                  </h2>
 
-                {q.options.map((opt, idx) => {
-                  const isCorrect = idx === q.correctIdx;
-                  const isChosen = idx === q.selectedIdx;
-                  const base =
-                    'rounded-lg px-3 py-2 text-sm flex items-start';
-                  const style = isCorrect
-                    ? 'bg-green-50 text-green-800'
-                    : isChosen
-                    ? 'bg-red-50 text-red-800'
-                    : 'bg-gray-100 text-gray-800';
+                  {q.options.map((opt, idx) => {
+                    const isCorrect = idx === q.correctIdx;
+                    const isChosen = idx === q.selectedIdx;
+                    const base =
+                      'rounded-lg px-3 py-2 text-sm flex items-start';
+                    const style = isCorrect
+                      ? 'bg-green-50 text-green-800'
+                      : isChosen
+                      ? 'bg-red-50 text-red-800'
+                      : 'bg-gray-100 text-gray-800';
 
-                  return (
-                    <div key={idx} className={`${base} ${style} mt-2`}>
-                      <span>{opt}</span>
-                      {isCorrect && (
-                        <span className="ml-auto font-semibold">✔ Correct</span>
-                      )}
-                      {!isCorrect && isChosen && (
-                        <span className="ml-auto font-semibold">
-                          ✖ Your choice
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                    return (
+                      <div key={idx} className={`${base} ${style} mt-2`}>
+                        <span>{opt}</span>
+                        {isCorrect && (
+                          <span className="ml-auto font-semibold">✔ Correct</span>
+                        )}
+                        {!isCorrect && isChosen && (
+                          <span className="ml-auto font-semibold">
+                            ✖ Your choice
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
 
           {/* ───────── Desktop: Table view ───────── */}
           <div className="hidden [@media(min-width:486px)]:block bg-white rounded-xl shadow-md overflow-hidden">
             <table className="w-full text-left">
               <tbody className="divide-y divide-gray-200 text-sm">
-                {detail.detailedAnswers.map((q, qi) => (
-                  <React.Fragment key={qi}>
-                    {/* Question row */}
-                    <tr className="bg-[#e7edf6]">
-                      <td colSpan="2" className="p-3 font-semibold text-[#002855]">
-                        Q{qi + 1}. {q.questionText}
-                      </td>
-                    </tr>
-                    {/* Option rows */}
-                    {q.options.map((opt, idx) => {
-                      const isCorrect = idx === q.correctIdx;
-                      const isChosen = idx === q.selectedIdx;
-                      return (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          <td className="p-3">{opt}</td>
-                          <td
-                            className={`p-3 ${
-                              isCorrect
-                                ? 'text-green-600'
+                {detail.detailedAnswers.map((q, qi) => {
+                  const isUnattempted = q.selectedIdx === null || q.selectedIdx === undefined;
+                  
+                  return (
+                    <React.Fragment key={qi}>
+                      {/* Question row */}
+                      <tr className="bg-[#e7edf6]">
+                        <td colSpan="2" className="p-3 font-semibold text-[#002855]">
+                          Q{qi + 1}. {q.questionText}
+                          {isUnattempted && (
+                            <span className="ml-2 text-yellow-600 font-medium text-sm">
+                              (Unattempted)
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                      {/* Option rows */}
+                      {q.options.map((opt, idx) => {
+                        const isCorrect = idx === q.correctIdx;
+                        const isChosen = idx === q.selectedIdx;
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="p-3">{opt}</td>
+                            <td
+                              className={`p-3 ${
+                                isCorrect
+                                  ? 'text-green-600'
+                                  : isChosen
+                                  ? 'text-red-600'
+                                  : ''
+                              }`}
+                            >
+                              {isCorrect
+                                ? '✔ Correct'
                                 : isChosen
-                                ? 'text-red-600'
-                                : ''
-                            }`}
-                          >
-                            {isCorrect
-                              ? '✔ Correct'
-                              : isChosen
-                              ? '✖ Your choice'
-                              : ''}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </React.Fragment>
-                ))}
+                                ? '✖ Your choice'
+                                : ''}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>

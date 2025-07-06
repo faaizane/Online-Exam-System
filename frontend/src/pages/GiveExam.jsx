@@ -190,7 +190,19 @@ export default function GiveExam() {
   }, [submitted, alreadySubmitted, exam, examId, stopCamera, cleanupAiServer]);
 
   const handleSubmit = useCallback(async (isWindowClosing = false) => {
-    if (submittingRef.current || submitted || alreadySubmitted || !exam) return;
+    console.log('🔥 HandleSubmit called:', { isWindowClosing, submitted, alreadySubmitted, examExists: !!exam });
+    
+    if (submittingRef.current || submitted || alreadySubmitted || !exam) {
+      console.log('❌ Submit blocked:', { 
+        submittingRef: submittingRef.current, 
+        submitted, 
+        alreadySubmitted, 
+        examExists: !!exam 
+      });
+      return;
+    }
+    
+    console.log('✅ Submit proceeding...');
     submittingRef.current = true;
     setSubmitted(true);
 
@@ -206,7 +218,12 @@ export default function GiveExam() {
     // Remove all anti-cheating event listeners once submitted
     window.removeEventListener('beforeunload', beforeUnloadHandler);
     document.removeEventListener('visibilitychange', onTabChange);
-    window.removeEventListener('blur', handleBlur); // Remove blur listener
+    // Remove blur listener if it exists
+    try {
+      window.removeEventListener('blur', handleBlur);
+    } catch (e) {
+      console.log('Blur listener removal failed:', e);
+    }
     window.onpopstate = null;
 
     const arr = exam.questions.map((_, i) => answers[i] ?? null);
@@ -235,6 +252,7 @@ export default function GiveExam() {
         sessionStorage.setItem(storageKey, tempSubmissionId);
       } else {
         // Normal fetch for regular submissions
+        console.log('📤 Sending submission to API...');
         const res = await fetch(`${API_URL}/api/exams/${examId}/submit`, {
           method: 'POST',
           headers: {
@@ -244,8 +262,11 @@ export default function GiveExam() {
           body: submissionData
         });
         
+        console.log('📥 API Response status:', res.status);
+        
         if (res.ok) {
           const data = await res.json();
+          console.log('✅ Submission successful:', data);
           sessionStorage.setItem(storageKey, data.submissionId);
           localStorage.setItem(storageKey, data.submissionId);
           
@@ -259,6 +280,10 @@ export default function GiveExam() {
           } catch (e) {
             console.log('Could not notify parent window:', e);
           }
+        } else {
+          console.error('❌ API submission failed with status:', res.status);
+          const errorText = await res.text();
+          console.error('Error details:', errorText);
         }
       }
     } catch (e) {
@@ -661,38 +686,118 @@ export default function GiveExam() {
                 <div className="text-sm text-slate-500 mt-1">
                   {Math.round((score / exam.questions.length) * 100)}% Correct
                 </div>
+                
+                {/* Detailed breakdown */}
+                <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-emerald-600">{score}</div>
+                      <div className="text-xs text-slate-500">Correct</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-red-600">
+                        {Object.keys(answers).length - score}
+                      </div>
+                      <div className="text-xs text-slate-500">Incorrect</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-amber-600">
+                        {exam.questions.length - Object.keys(answers).length}
+                      </div>
+                      <div className="text-xs text-slate-500">Unattempted</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Answer review - same size as original but better styling */}
-            {exam.questions.map((q,i) => (
-              <div key={i} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6 hover:shadow-md transition-shadow">
-                <h3 className="text-xl font-semibold text-slate-800 mb-4">Q{i+1}. {q.questionText}</h3>
-                <div className="space-y-2">
-                  {q.options.map((opt,j) => {
-                    const corr = j===q.correctAnswerIndex;
-                    const cho = answers[i]===j;
-                    return (
-                      <div key={j} className={`p-3 rounded-lg border ${
-                        corr 
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
-                          : cho 
-                          ? 'bg-red-50 border-red-200 text-red-800'
-                          : 'bg-slate-50 border-slate-200 text-slate-700'
-                      }`}>
-                        <div className="flex items-center justify-between">
-                          <span>{opt}</span>
-                          <div className="flex items-center space-x-1">
-                            {corr && <span className="text-emerald-600 font-medium">✓ Correct</span>}
-                            {cho && !corr && <span className="text-red-600 font-medium">✗ Your Answer</span>}
+            {/* Answer review - enhanced with unattempted tracking */}
+            {exam.questions.map((q,i) => {
+              const isAttempted = answers[i] !== undefined && answers[i] !== null;
+              const studentAnswer = answers[i];
+              const correctAnswer = q.correctAnswerIndex;
+              const isCorrect = isAttempted && studentAnswer === correctAnswer;
+              
+              return (
+                <div key={i} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-xl font-semibold text-slate-800">Q{i+1}. {q.questionText}</h3>
+                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      isCorrect 
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : !isAttempted
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {isCorrect ? '✓ Correct' : !isAttempted ? '⚠ Unattempted' : '✗ Incorrect'}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {q.options.map((opt,j) => {
+                      const isCorrectOption = j === correctAnswer;
+                      const isStudentChoice = isAttempted && studentAnswer === j;
+                      
+                      // Determine styling based on different scenarios
+                      let styling = 'bg-slate-50 border-slate-200 text-slate-700';
+                      let label = '';
+                      
+                      if (isCorrectOption && !isAttempted) {
+                        // Correct answer for unattempted question
+                        styling = 'bg-emerald-50 border-emerald-200 text-emerald-800';
+                        label = '✓ Correct Answer';
+                      } else if (isCorrectOption && isStudentChoice) {
+                        // Student chose correct answer
+                        styling = 'bg-emerald-50 border-emerald-200 text-emerald-800';
+                        label = '✓ Your Correct Answer';
+                      } else if (isCorrectOption && !isStudentChoice && isAttempted) {
+                        // Correct answer when student chose wrong
+                        styling = 'bg-emerald-50 border-emerald-200 text-emerald-800';
+                        label = '✓ Correct Answer';
+                      } else if (isStudentChoice && !isCorrectOption) {
+                        // Student's wrong choice
+                        styling = 'bg-red-50 border-red-200 text-red-800';
+                        label = '✗ Your Answer (Incorrect)';
+                      }
+                      
+                      return (
+                        <div key={j} className={`p-3 rounded-lg border ${styling}`}>
+                          <div className="flex items-center justify-between">
+                            <span className="flex-1">{opt}</span>
+                            {label && (
+                              <span className={`font-medium text-sm ${
+                                label.includes('Correct') ? 'text-emerald-600' : 'text-red-600'
+                              }`}>
+                                {label}
+                              </span>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Summary for each question */}
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="text-sm text-slate-600">
+                      {isCorrect ? (
+                        <span className="text-emerald-600 font-medium">
+                          ✓ You answered this question correctly
+                        </span>
+                      ) : !isAttempted ? (
+                        <span className="text-amber-600 font-medium">
+                          ⚠ You did not attempt this question
+                        </span>
+                      ) : (
+                        <span className="text-red-600 font-medium">
+                          ✗ You answered this question incorrectly
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <>
@@ -727,7 +832,7 @@ export default function GiveExam() {
             {/* Submit button - professional styling */}
             <div className="text-center mt-8 pb-8">
               <button
-                onClick={handleSubmit}
+                onClick={() => handleSubmit(false)}
                 disabled={submitted}
                 className={`px-8 py-3 text-lg font-medium rounded-lg transition-all duration-200 ${
                   submitted

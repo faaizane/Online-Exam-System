@@ -27,33 +27,41 @@ function useFormatted(exam) {
       const [hh, mm] = exam.scheduleTime.split(':').map(Number);
       dt.setHours(hh, mm, 0, 0);
     }
+    
+    // Format date as DD-MM-YYYY
+    const day = String(dt.getDate()).padStart(2, '0');
+    const month = String(dt.getMonth() + 1).padStart(2, '0');
+    const year = dt.getFullYear();
+    const examDate = `${day}-${month}-${year}`;
+    
+    // Format time as HH:MM AM/PM
+    const examTime = dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+    
     return {
-      examDate: dt.toLocaleDateString(),
-      examTime: dt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }),
+      examDate,
+      examTime,
       dateTime: dt
     };
   }, [exam.scheduleDate, exam.scheduleTime]);
 }
 
 const getStatus = (exam, dateTime) => {
-  // Check if exam is submitted (from storage or exam object)
   const storageKey = `submission_${exam._id}`;
   const submissionId = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey) || exam.submissionId;
-  
+
   if (submissionId || exam?.attempted) return 'Attempted';
   if (!dateTime) return '';
-  
+
   const now = new Date();
   const examStart = new Date(dateTime);
   const examEnd = new Date(examStart.getTime() + (exam.duration * 60 * 1000));
-  
-  // If current time is before exam start time
+
   if (now < examStart) return 'Scheduled';
-  
-  // If current time is between exam start and end time
   if (now >= examStart && now <= examEnd) return 'Ongoing';
-  
-  // If current time is after exam end time but not submitted, still show as Ongoing
+
+  // If current time is after exam end time and submission exists, show as Attempted
+  if (now > examEnd && submissionId) return 'Attempted';
+
   return 'Ongoing';
 };
 
@@ -64,14 +72,69 @@ export default function TestPage() {
 
   const { state } = useLocation();
   const navigate = useNavigate();
-  const exams = state?.exams ?? (state?.exam ? [state.exam] : []);
+  // 1) Exams that were navigated via <Link/>, keeps behaviour for in-app navigation
+  const locationExams = state?.exams ?? (state?.exam ? [state.exam] : []);
+
+  // 2) Make it stateful so we can later refresh from backend
+  const [exams, setExams] = useState(locationExams);
 
   const [subId, setSubId] = useState(() => {
-    const first = exams[0];
+    const first = locationExams[0];
     return first
       ? first.submissionId || sessionStorage.getItem(`submission_${first._id}`) || localStorage.getItem(`submission_${first._id}`)
       : null;
   });
+
+  // 🔄 On mount, fetch latest available exams so a hard reload shows new ones too
+  useEffect(() => {
+    async function refreshExams() {
+      try {
+        const token = sessionStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/exams/available?includeAttempted=true`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Failed to load exams');
+
+        const data = await res.json();
+
+        // Flatten the groups → plain array like TakeExam.jsx does
+        const allExams = data.flatMap(group =>
+          group.exams.map(e => ({
+            _id:          e._id,
+            subjectName:  e.subjectName,
+            examNo:       e.examNo,
+            semester:     e.semester,
+            duration:     e.duration,
+            scheduleDate: e.scheduleDate,
+            scheduleTime: e.scheduleTime,
+            attempted:    e.attempted,
+            submissionId: e.submissionId
+          }))
+        );
+
+        let next;
+        if (locationExams.length === 1) {
+          // We were launched for one specific exam (e.g., from Dashboard) → keep only that exam
+          const updated = allExams.find(ex => ex._id === locationExams[0]._id);
+          next = updated ? [updated] : [locationExams[0]];
+        } else {
+          // We were launched with a list (e.g., TakeExam subject view) → keep same-subject list
+          const subject = locationExams[0]?.subjectName;
+          next = subject ? allExams.filter(ex => ex.subjectName === subject) : allExams;
+        }
+
+        setExams(next);
+        // Force children re-render keys so UI updates cleanly
+        setRefreshKey(k => k + 1);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    refreshExams();
+    // We only want this once on mount (not on every location/state change)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!exams.length) navigate(-1);
@@ -153,6 +216,46 @@ export default function TestPage() {
     };
   }, [exams, subId]);
 
+  /**
+   * 🔄 GLOBAL watcher ‑ if *any* `submission_*` key changes, refresh the list so
+   *     status badges update even for exams beyond the first element.
+   *     Keeps existing logic intact but closes the gap where another exam row
+   *     was attempted and wasn’t being listened for.
+   */
+  useEffect(() => {
+    const bump = () => setRefreshKey(k => k + 1);
+
+    // Any storage write whose key starts with submission_ triggers re-render
+    const onAnyStorage = e => {
+      if (e.key && e.key.startsWith('submission_')) bump();
+    };
+
+    // Passive 1-second polling checks all current exams for submission keys
+    const poll = () => {
+      const changed = exams.some(ex =>
+        Boolean(sessionStorage.getItem(`submission_${ex._id}`) || localStorage.getItem(`submission_${ex._id}`))
+      );
+      if (changed) bump();
+    };
+    const iv = setInterval(poll, 1000);
+    window.addEventListener('storage', onAnyStorage);
+    window.addEventListener('examSubmitted', bump);
+
+    return () => {
+      clearInterval(iv);
+      window.removeEventListener('storage', onAnyStorage);
+      window.removeEventListener('examSubmitted', bump);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exams]);
+
+  // Always compute formatting hooks before any conditional return to keep hook order stable
+  const exam = exams[0];
+  const formatted = useFormatted(exam);
+  const examDate = formatted.examDate;
+  const examTime = formatted.examTime;
+  const status = getStatus(exam, formatted.dateTime);
+
   if (exams.length > 1) {
     return (
       <Layout sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar}>
@@ -177,12 +280,6 @@ export default function TestPage() {
       </Layout>
     );
   }
-
-  const exam = exams[0];
-  const formatted = useFormatted(exam);
-  const examDate = formatted.examDate;
-  const examTime = formatted.examTime;
-  const status = getStatus(exam, formatted.dateTime);
 
   return (
     <Layout sidebarOpen={sidebarOpen} toggleSidebar={toggleSidebar}>
@@ -440,7 +537,7 @@ export function ActionButton({ exam }) {
     <button
       onClick={handleClick}
       disabled={isDisabled}
-      className={`px-3 py-1 rounded transition bg-[#003366] text-white hover:bg-blue-700 ${
+      className={`px-3 py-1 rounded transition bg-[#003366] text-white hover:bg-blue-700 cursor-pointer ${
         isDisabled ? 'opacity-50 cursor-not-allowed' : ''
       }`}
       title={!ready && !attempted ? `Available at ${scheduled.toLocaleString()}` : ''}
@@ -450,7 +547,6 @@ export function ActionButton({ exam }) {
   );
 }
 
-// Status component with styling
 const StatusBadge = ({ status }) => {
   const getStatusStyle = (status) => {
     switch (status) {

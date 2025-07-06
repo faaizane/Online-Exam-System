@@ -267,8 +267,8 @@ export default function SubjectStudents() {
                 onClick={() => setShowEditPanel(e => !e)}
                 className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm ${
                   showEditPanel 
-                    ? 'bg-gray-500 text-white hover:bg-gray-600 shadow-md' 
-                    : 'bg-yellow-500 text-white hover:bg-yellow-600 hover:shadow-md'
+                    ? 'bg-gray-300 text-gray-800 hover:bg-gray-400 shadow-md' 
+                    : 'bg-yellow-200 text-gray-800 hover:bg-yellow-300 hover:shadow-md'
                 }`}
               >
                 <i
@@ -283,8 +283,8 @@ export default function SubjectStudents() {
                 onClick={() => setShowPanel(p => !p)}
                 className={`flex items-center justify-center sm:justify-start gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm ${
                   showPanel 
-                    ? 'bg-gray-500 text-white hover:bg-gray-600 shadow-md' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-md'
+                    ? 'bg-gray-300 text-gray-800 hover:bg-gray-400 shadow-md' 
+                    : 'bg-blue-200 text-gray-800 hover:bg-blue-300 hover:shadow-md'
                 }`}
               >
                 <i
@@ -306,139 +306,151 @@ export default function SubjectStudents() {
           </div>
 
           {showEditPanel && (
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl shadow-lg p-6 mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <i className="fa-solid fa-pen text-yellow-600 text-lg"></i>
-                <h3 className="text-lg font-semibold text-yellow-800">Edit Subject Details</h3>
-              </div>
-              {msg && <p className="mb-4 text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">{msg}</p>}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div>
-                  <label className="block mb-1 font-medium text-gray-700">Subject Name</label>
-                  <input
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
-                  />
+            <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4">
+              <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-6 w-full max-w-[500px]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Edit Subject Details</h3>
+                  <button
+                    onClick={() => setShowEditPanel(false)}
+                    className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-200 transition-colors"
+                  >
+                    <i className="fa-solid fa-times text-lg"></i>
+                  </button>
                 </div>
-                <div>
-                  <label className="block mb-1 font-medium text-gray-700">Session</label>
-                  <input
-                    value={editSession}
-                    onChange={e => setEditSession(e.target.value)}
-                    className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
-                  />
+                {msg && <p className="mb-4 text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">{msg}</p>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label className="block mb-1 font-medium text-gray-700">Subject Name</label>
+                    <input
+                      value={editName}
+                      onChange={e => setEditName(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-medium text-gray-700">Session</label>
+                    <input
+                      value={editSession}
+                      onChange={e => setEditSession(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-medium text-gray-700">Year</label>
+                    <input
+                      type="number"
+                      value={editYear}
+                      onChange={e => setEditYear(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 font-medium text-gray-700">Semester</label>
+                    <input
+                      type="number"
+                      value={editSemester}
+                      onChange={e => setEditSemester(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block mb-1 font-medium text-gray-700">Year</label>
-                  <input
-                    type="number"
-                    value={editYear}
-                    onChange={e => setEditYear(e.target.value)}
-                    className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
-                  />
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleEditSubmit}
+                    className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
+                  >
+                    <i className="fa-solid fa-check"></i>
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={handleDeleteSubject}
+                    className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
+                  >
+                    <i className="fa-solid fa-trash"></i> 
+                    Delete Subject
+                  </button>
                 </div>
-                <div>
-                  <label className="block mb-1 font-medium text-gray-700">Semester</label>
-                  <input
-                    type="number"
-                    value={editSemester}
-                    onChange={e => setEditSemester(e.target.value)}
-                    className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-colors"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <button
-                  onClick={handleEditSubmit}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
-                >
-                  <i className="fa-solid fa-check"></i>
-                  Save Changes
-                </button>
-                <button
-                  onClick={handleDeleteSubject}
-                  className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
-                >
-                  <i className="fa-solid fa-trash"></i> 
-                  Delete Subject
-                </button>
               </div>
             </div>
           )}
 
           {showPanel && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-lg p-6 mb-6">
-              <div className="flex items-center gap-2 mb-4">
-                <i className="fa-solid fa-user-plus text-blue-600 text-lg"></i>
-                <h3 className="text-lg font-semibold text-blue-800">Add Students to Subject</h3>
-              </div>
-              {msg && <p className="mb-4 text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">{msg}</p>}
-              
-              <div className="bg-white rounded-lg p-4 mb-6 border border-blue-100">
-                <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                  <i className="fa-solid fa-users text-blue-500"></i>
-                  Bulk Add Students
-                </h4>
-                <div className="flex flex-col sm:flex-row gap-4 mb-4">
-                  <div className="flex-1">
-                    <label className="block mb-1 font-medium text-gray-700">Department</label>
-                    <select
-                      value={bulkDept}
-                      onChange={e => setBulkDept(e.target.value)}
-                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">-- Select Department --</option>
-                      {departments.map(dep => (
-                        <option key={dep} value={dep}>{dep}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex-1">
-                    <label className="block mb-1 font-medium text-gray-700">Semester</label>
-                    <select
-                      value={bulkSem}
-                      onChange={e => setBulkSem(e.target.value)}
-                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    >
-                      <option value="">-- Select Semester --</option>
-                      {semesters.map(sem => (
-                        <option key={sem} value={sem}>{sem}</option>
-                      ))}
-                    </select>
-                  </div>
+            <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4">
+              <div className="bg-white border border-gray-300 rounded-lg shadow-lg p-6 w-full max-w-[500px]">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Add Students to Subject</h3>
                   <button
-                    onClick={handleBulkAdd}
-                    className="self-end bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
+                    onClick={() => setShowPanel(false)}
+                    className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-200 transition-colors"
                   >
-                    <i className="fa-solid fa-plus"></i>
-                    Add All
+                    <i className="fa-solid fa-times text-lg"></i>
                   </button>
                 </div>
-              </div>
-              
-              <div className="bg-white rounded-lg p-4 border border-blue-100">
-                <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
-                  <i className="fa-solid fa-user-plus text-blue-500"></i>
-                  Add Individual Student
-                </h4>
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
-                    <label className="block mb-1 font-medium text-gray-700">Registration Number</label>
-                    <input
-                      value={regNo}
-                      onChange={e => setRegNo(e.target.value)}
-                      placeholder="e.g. 21pwbcs001"
-                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                    />
+                {msg && <p className="mb-4 text-green-600 bg-green-50 p-3 rounded-lg border border-green-200">{msg}</p>}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <i className="fa-solid fa-users text-blue-500"></i>
+                    Bulk Add Students
+                  </h4>
+                  <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                    <div className="flex-1">
+                      <label className="block mb-1 font-medium text-gray-700">Department</label>
+                      <select
+                        value={bulkDept}
+                        onChange={e => setBulkDept(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="">-- Select Department --</option>
+                        {departments.map(dep => (
+                          <option key={dep} value={dep}>{dep}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-medium text-gray-700">Semester</label>
+                      <select
+                        value={bulkSem}
+                        onChange={e => setBulkSem(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="">-- Select Semester --</option>
+                        {semesters.map(sem => (
+                          <option key={sem} value={sem}>{sem}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <button
+                      onClick={handleBulkAdd}
+                      className="self-end bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
+                    >
+                      <i className="fa-solid fa-plus"></i>
+                      Add All
+                    </button>
                   </div>
-                  <button
-                    onClick={handleSingleAdd}
-                    className="self-end bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
-                  >
-                    <i className="fa-solid fa-user-plus"></i>
-                    Add Student
-                  </button>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <i className="fa-solid fa-user-plus text-blue-500"></i>
+                    Add Individual Student
+                  </h4>
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <div className="flex-1">
+                      <label className="block mb-1 font-medium text-gray-700">Registration Number</label>
+                      <input
+                        value={regNo}
+                        onChange={e => setRegNo(e.target.value)}
+                        placeholder="e.g. 21pwbcs001"
+                        className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSingleAdd}
+                      className="self-end bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium shadow-sm hover:shadow-md flex items-center gap-2"
+                    >
+                      <i className="fa-solid fa-user-plus"></i>
+                      Add Student
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

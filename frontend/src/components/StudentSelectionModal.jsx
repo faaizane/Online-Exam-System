@@ -58,9 +58,9 @@ const StudentSelectionModal = ({
 
   // Filter students based on search term
   const filteredStudents = allStudents.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (student.name && student.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (student.rollNumber && student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    student.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (student.email && student.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   // Toggle individual student exclusion
@@ -97,7 +97,7 @@ const StudentSelectionModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="absolute inset-0 bg-white bg-opacity-95 backdrop-blur-sm flex justify-center items-start pt-8 z-50" onClick={handleCancel}>
+    <div className="fixed inset-0 flex justify-center items-start pt-8 z-50 bg-black/40 backdrop-blur-sm" onClick={handleCancel}>
       <div className="bg-white rounded-xl w-[90%] max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-gray-200" onClick={e => e.stopPropagation()}>
         {/* Modal Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
@@ -128,7 +128,9 @@ const StudentSelectionModal = ({
           {/* Info Banner */}
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
-              <span className="font-medium">ℹ️ All students are included by default.</span> Uncheck students you want to exclude from this exam.
+              <span className="font-medium">
+                <i className="fa-solid fa-circle-info mr-1"></i> All students are included by default.
+              </span> Uncheck students you want to exclude from this exam.
             </p>
           </div>
 
@@ -162,12 +164,12 @@ const StudentSelectionModal = ({
             ) : (
               filteredStudents.map(student => (
                 <div key={student._id} className="flex items-center p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={!localExcluded.includes(student._id)} // Checked if NOT excluded (included)
-                    onChange={() => toggleStudent(student._id)}
-                    className="mr-3 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                  />
+                  <button
+                    onClick={() => toggleStudent(student._id)}
+                    className="mr-3 text-blue-600 focus:outline-none"
+                  >
+                    <i className={`fa-solid ${!localExcluded.includes(student._id) ? 'fa-square-check' : 'fa-square'}`}></i>
+                  </button>
                   <div className="flex-1">
                     <div className="font-medium text-gray-900 text-sm">{student.name}</div>
                     {student.rollNumber && (
@@ -201,7 +203,7 @@ const StudentSelectionModal = ({
             </button>
             <button 
               onClick={handleSave} 
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+              className="px-5 py-2 bg-[#003366] hover:bg-[#002855] text-white rounded-lg text-sm font-medium transition-colors"
             >
               Save Changes
             </button>

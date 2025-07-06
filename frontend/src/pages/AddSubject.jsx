@@ -38,6 +38,8 @@ export default function AddSubject() {
     setForm(f => ({ ...f, [name]: value }));
   };
 
+  const capitalizeWords = str => str.replace(/\b\w/g, char => char.toUpperCase());
+
   const handleSubmit = async e => {
     e.preventDefault();
     setError('');
@@ -48,14 +50,14 @@ export default function AddSubject() {
       return;
     }
 
-    const nameNorm = form.name.trim().toLowerCase();
-    const sessionNorm = form.session.trim().toLowerCase();
+    const nameNorm = capitalizeWords(form.name.trim().toLowerCase());
+    const sessionNorm = capitalizeWords(form.session.trim().toLowerCase());
     const yearInt = parseInt(form.year, 10);
     const semInt = parseInt(form.semester, 10);
 
     const duplicate = subjects.find(s =>
-      s.name.trim().toLowerCase() === nameNorm &&
-      s.session.trim().toLowerCase() === sessionNorm &&
+      s.name.trim().toLowerCase() === nameNorm.toLowerCase() &&
+      s.session.trim().toLowerCase() === sessionNorm.toLowerCase() &&
       s.year === yearInt &&
       s.semester === semInt
     );
@@ -68,8 +70,8 @@ export default function AddSubject() {
       await axios.post(
         `${API_BASE_URL}/api/subjects`,
         {
-          name: form.name.trim(),
-          session: form.session.trim(),
+          name: nameNorm,
+          session: sessionNorm,
           year: yearInt,
           semester: semInt
         },

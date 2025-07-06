@@ -55,14 +55,12 @@ export default function TLogin() {
           <h2 className="text-[19px] pt-[10px] mb-[5px]">
             UNIVERSITY OF ENGINEERING AND TECHNOLOGY PESHAWAR
           </h2>
-          <h3 className="text-[18px] pt-[7px] mb-3 text-[#bbbbbb]">
-            Effortless Exam Management for Teachers
-          </h3>
           <div
             className="
               absolute
               -bottom-[60px]
-              left-1/2 transform -translate-x-1/2
+              left-1/2
+              transform -translate-x-1/2
               w-[80px] h-[80px]
               sm:w-[100px] sm:h-[100px]
               md:w-[145px] md:h-[145px]
@@ -78,7 +76,7 @@ export default function TLogin() {
         <form onSubmit={handleSubmit} className="pt-[70px] px-20 pb-[30px] bg-white text-center">
           <div className="mb-2 text-left">
             <label htmlFor="teacherid" className="block text-[13.5px] font-semibold mb-1">
-              Teacher ID
+              Teacher Email
             </label>
             <input
               id="teacherid"

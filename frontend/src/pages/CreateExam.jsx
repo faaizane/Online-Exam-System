@@ -204,112 +204,121 @@ export default function CreateExam() {
           <h1 className="text-3xl font-bold text-[#002855]">Create Exam</h1>
 
           {/* Form Fields */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Year</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Year</label>
               <input
                 name="year"
                 type="text"
                 value={form.year}
                 onChange={handleFormChange}
                 placeholder="e.g. 2025"
-                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
+                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Subject</label>
-              <select
-                name="subject"
-                value={form.subject}
-                onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
-                required
-              >
-                <option value="">— Select Subject —</option>
-                {subjects.map(s => (
-                  <option key={s._id} value={s._id}>
-                    {s.name} — {s.session.charAt(0).toUpperCase() + s.session.slice(1)} {s.year} (Sem {s.semester})
-                  </option>
-                ))}
-              </select>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Subject</label>
+              <div className="relative">
+                <select
+                  name="subject"
+                  value={form.subject}
+                  onChange={handleFormChange}
+                  className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 cursor-pointer appearance-none pr-10"
+                  required
+                >
+                  <option value="">— Select Subject —</option>
+                  {subjects.map(s => (
+                    <option key={s._id} value={s._id}>
+                      {s.name} — {s.session.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')} {s.year} (Sem {s.semester})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Session</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Session</label>
               <input
                 name="session"
-                value={form.session}
+                value={form.session.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                 disabled
-                className="w-full bg-gray-100 border px-3 py-2 rounded-lg"
+                className="w-full bg-gray-50 border-2 border-gray-200 px-4 py-3 rounded-xl text-gray-600 shadow-sm cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Semester</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Semester</label>
               <input
                 name="semester"
                 value={form.semester}
                 disabled
-                className="w-full bg-gray-100 border px-3 py-2 rounded-lg"
+                className="w-full bg-gray-50 border-2 border-gray-200 px-4 py-3 rounded-xl text-gray-600 shadow-sm cursor-not-allowed"
               />
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Exam Number</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Exam Number</label>
               <input
                 name="examNo"
                 value={form.examNo}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
+                placeholder="Enter exam number"
+                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Duration (min)</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Duration (minutes)</label>
               <input
                 name="duration"
                 type="number"
                 min="1"
                 value={form.duration}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
+                placeholder="e.g. 60"
+                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Schedule Date</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Schedule Date</label>
               <input
                 name="scheduleDate"
                 type="date"
                 value={form.scheduleDate}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
+                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                 required
               />
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-[#002855]">Schedule Time</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Schedule Time</label>
               <input
                 name="scheduleTime"
                 type="time"
                 value={form.scheduleTime}
                 onChange={handleFormChange}
-                className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
+                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                 required
               />
             </div>
           </div>
 
           {/* Student Selection Section */}
-          <div className="bg-gray-50 p-4 rounded-lg border">
-            <label className="block mb-2 font-medium text-[#002855]">Manage Students for Exam</label>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-100 shadow-sm">
+            <label className="block mb-3 font-semibold text-[#002855] text-lg">Manage Students for Exam</label>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-700 font-medium">
                 {excludedStudents.length > 0 
                   ? `${excludedStudents.length} students excluded from exam` 
                   : 'All students are included in this exam'
@@ -319,17 +328,17 @@ export default function CreateExam() {
                 type="button"
                 onClick={() => setShowStudentModal(true)}
                 disabled={!form.subject}
-                className={`px-4 py-2 rounded-lg transition ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
                   !form.subject 
-                    ? 'bg-gray-300 cursor-not-allowed' 
-                    : 'bg-[#002855] hover:bg-[#001f47] text-white'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                    : 'bg-[#002855] hover:bg-[#001f47] text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                 }`}
               >
                 {excludedStudents.length > 0 ? 'Manage Exclusions' : 'Manage Students'}
               </button>
             </div>
             {!form.subject && (
-              <p className="text-xs text-red-500 mt-1">Please select a subject first</p>
+              <p className="text-xs text-red-500 mt-2 font-medium">Please select a subject first</p>
             )}
           </div>
 
@@ -349,7 +358,7 @@ export default function CreateExam() {
               className={`px-6 py-2 rounded-lg transition ${
                 isSubmitting 
                   ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-[#002855] hover:bg-[#001f47]'
+                  : 'bg-green-500 hover:bg-green-600'
               } text-white`}
             >
               {isSubmitting ? 'Creating Exam...' : 'Submit Exam'}
@@ -367,24 +376,24 @@ export default function CreateExam() {
           {/* Questions */}
           <div className="space-y-6">
             {questions.map((q, idx) => (
-              <div key={idx} className="relative bg-white shadow-lg rounded-lg p-6">
-                <div className="absolute -top-3 -left-3 bg-[#002855] text-white font-bold rounded-full w-10 h-10 flex items-center justify-center">
+              <div key={idx} className="relative bg-white shadow-sm rounded-2xl p-6 border-2 border-gray-200 hover:border-gray-300 transition-all duration-200">
+                <div className="absolute -top-3 -left-3 bg-[#002855] text-white font-bold rounded-full w-12 h-12 flex items-center justify-center shadow-lg">
                   {idx + 1}
                 </div>
-                <div className="mt-6">
-                  <label className="block mb-1 font-semibold text-[#002855]">
+                <div className="mt-4">
+                  <label className="block mb-2 font-semibold text-[#002855] text-sm">
                     Question {idx + 1}
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={q.questionText}
                     onChange={e => handleQuestionChange(idx, 'questionText', e.target.value)}
-                    className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855] resize-none"
+                    className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 resize-none bg-white shadow-sm hover:border-gray-400"
                     placeholder="Enter question text"
                     required
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
                   {q.options.map((opt, i) => (
                     <input
                       key={i}
@@ -392,29 +401,36 @@ export default function CreateExam() {
                       placeholder={`Option ${i + 1}`}
                       value={opt}
                       onChange={e => handleQuestionChange(idx, 'option', e.target.value, i)}
-                      className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
+                      className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                       required
                     />
                   ))}
                 </div>
-                <div className="mt-4">
-                  <label className="block mb-1 font-medium text-[#002855]">Correct Answer</label>
-                  <select
-                    value={q.correctAnswerIndex ?? ''}
-                    onChange={e => handleQuestionChange(idx, 'correctAnswerIndex', e.target.value)}
-                    className="w-full border px-3 py-2 rounded-lg focus:ring-2 focus:ring-[#002855]"
-                    required
-                  >
-                    <option value="" disabled>Select correct option</option>
-                    {q.options.map((_, i) => (
-                      <option key={i} value={i}>Option {i + 1}</option>
-                    ))}
-                  </select>
+                <div className="mt-5">
+                  <label className="block mb-2 font-semibold text-[#002855] text-sm">Correct Answer</label>
+                  <div className="relative">
+                    <select
+                      value={q.correctAnswerIndex ?? ''}
+                      onChange={e => handleQuestionChange(idx, 'correctAnswerIndex', e.target.value)}
+                      className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 cursor-pointer appearance-none pr-10"
+                      required
+                    >
+                      <option value="" disabled>Select correct option</option>
+                      {q.options.map((_, i) => (
+                        <option key={i} value={i}>Option {i + 1}</option>
+                      ))}
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => deleteQuestion(idx)}
-                  className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-red-800"
+                  className="absolute -top-3 -right-3 bg-red-600 text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-red-700 transition-all duration-200 shadow-lg hover:shadow-xl text-lg font-bold"
                 >
                   ×
                 </button>
@@ -423,9 +439,12 @@ export default function CreateExam() {
             <button
               type="button"
               onClick={addQuestion}
-              className="flex items-center text-[#0073E6] font-medium"
+              className="flex items-center justify-center w-full py-4 border-2 border-dashed border-[#002855] rounded-xl text-[#002855] font-semibold text-lg hover:bg-[#002855]/5 hover:border-solid transition-all duration-200"
             >
-              + Add Question
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              Add Question
             </button>
           </div>
         </form>

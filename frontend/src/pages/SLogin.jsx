@@ -56,9 +56,6 @@ export default function SLogin() {
           <h2 className="text-[19px] pt-[10px] mb-[5px]">
             UNIVERSITY OF ENGINEERING AND TECHNOLOGY PESHAWAR
           </h2>
-          <h3 className="text-[18px] pt-[7px] mb-3 text-[#bbbbbb]">
-            Welcome to Exam Portal
-          </h3>
           <div
             className="
               absolute
@@ -80,7 +77,7 @@ export default function SLogin() {
         <form onSubmit={handleSubmit} className="pt-[70px] px-20 pb-[30px] bg-white text-center">
           <div className="mb-2 text-left">
             <label htmlFor="regno" className="block text-[13.5px] font-semibold mb-1">
-              Registration Number
+              Student Email
             </label>
             <input
               id="regno"
