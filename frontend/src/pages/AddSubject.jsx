@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
+import BackButton from '../components/BackButton';
 import axios from 'axios';
 
 export default function AddSubject() {
@@ -18,7 +19,8 @@ export default function AddSubject() {
     name: '',
     session: '',
     year: '',
-    semester: ''
+    semester: '',
+    section: ''
   });
   const [error, setError] = useState('');
   const [subjects, setSubjects] = useState([]);
@@ -54,15 +56,17 @@ export default function AddSubject() {
     const sessionNorm = capitalizeWords(form.session.trim().toLowerCase());
     const yearInt = parseInt(form.year, 10);
     const semInt = parseInt(form.semester, 10);
+    const sectionNorm = capitalizeWords(form.section.trim().toLowerCase());
 
     const duplicate = subjects.find(s =>
       s.name.trim().toLowerCase() === nameNorm.toLowerCase() &&
       s.session.trim().toLowerCase() === sessionNorm.toLowerCase() &&
+      (s.section || '').trim().toLowerCase() === sectionNorm.toLowerCase() &&
       s.year === yearInt &&
       s.semester === semInt
     );
     if (duplicate) {
-      setError('This subject for the same year/session/semester already exists.');
+      setError('This subject for the same year/session/semester/section already exists.');
       return;
     }
 
@@ -73,7 +77,8 @@ export default function AddSubject() {
           name: nameNorm,
           session: sessionNorm,
           year: yearInt,
-          semester: semInt
+          semester: semInt,
+          section: sectionNorm
         },
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -92,12 +97,7 @@ export default function AddSubject() {
         <Header toggleSidebar={toggleSidebar} />
 
         <div className="px-4 md:px-16 py-6">
-          <button
-            onClick={() => navigate('/studentmanagement')}
-            className="mb-4 text-sm text-[#002855] hover:underline"
-          >
-            ← Back
-          </button>
+          <BackButton to="/studentmanagement" />
           <h1 className="text-3xl font-bold text-[#002855] mb-6">
             Add New Subject
           </h1>
@@ -153,6 +153,17 @@ export default function AddSubject() {
                 value={form.semester}
                 onChange={handleChange}
                 required
+                className="w-full border px-3 py-2 rounded"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 font-medium">Section</label>
+              <input
+                name="section"
+                value={form.section}
+                onChange={handleChange}
+                placeholder="e.g. A"
                 className="w-full border px-3 py-2 rounded"
               />
             </div>

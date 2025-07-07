@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
+import BackButton from '../components/BackButton';
 import StudentSelectionModal from '../components/StudentSelectionModal';
 
 export default function CreateExam() {
@@ -168,7 +169,7 @@ export default function CreateExam() {
         setExcludedStudents([]);
         setQuestions([{ questionText: '', options: ['', '', '', ''], correctAnswerIndex: null }]);
       } else {
-        setPopup({ show: true, message: `Error: ${data.message}`, type: 'error' });
+        setPopup({ show: true, message: data.message, type: 'error' }); // Remove 'Error:' prefix
       }
     } catch {
       setPopup({ show: true, message: 'Server error. Please try again.', type: 'error' });
@@ -199,6 +200,10 @@ export default function CreateExam() {
       <div className="flex-1 flex flex-col [@media(min-width:945px)]:ml-64">
         <Header toggleSidebar={toggleSidebar} />
 
+        <div className="px-4 md:px-16 py-6">
+          <BackButton />
+        </div>
+
         <div className="relative flex-1 overflow-hidden">
           <form onSubmit={handleSubmit} className="px-4 md:px-8 [@media(min-width:1100px)]:px-16 py-6 space-y-6">
           <h1 className="text-3xl font-bold text-[#002855]">Create Exam</h1>
@@ -225,19 +230,19 @@ export default function CreateExam() {
                   name="subject"
                   value={form.subject}
                   onChange={handleFormChange}
-                  className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 cursor-pointer appearance-none pr-10"
                   required
+                  className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 appearance-none pr-10"
                 >
                   <option value="">— Select Subject —</option>
                   {subjects.map(s => (
                     <option key={s._id} value={s._id}>
-                      {s.name} — {s.session.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')} {s.year} (Sem {s.semester})
+                      {s.name} - {s.semester} {s.section.charAt(0).toUpperCase() + s.section.slice(1)} - {s.session.charAt(0).toUpperCase() + s.session.slice(1)}
                     </option>
                   ))}
                 </select>
                 <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                  <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                   </svg>
                 </div>
               </div>
@@ -421,8 +426,8 @@ export default function CreateExam() {
                       ))}
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
-                      <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
                       </svg>
                     </div>
                   </div>
@@ -485,7 +490,6 @@ export default function CreateExam() {
               animation: slideInRight 0.5s ease-out forwards;
             }
           `}</style>
-          
           <div className={`rounded-lg p-4 shadow-lg max-w-sm ${
             popup.type === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
           }`}>
@@ -505,7 +509,7 @@ export default function CreateExam() {
               )}
               <div className="flex-1">
                 <h4 className={`text-sm font-semibold ${popup.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
-                  {popup.type === 'success' ? 'Success!' : 'Error!'}
+                  {popup.type === 'success' ? 'Success!' : 'Exam Creation Error'}
                 </h4>
                 <p className={`text-xs mt-1 ${popup.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
                   {popup.message}

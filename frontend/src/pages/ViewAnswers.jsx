@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
 import SHeader from '../components/SHeader';
+import BackButton from '../components/BackButton';
 
 export default function ViewAnswers() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -42,6 +43,8 @@ export default function ViewAnswers() {
         <SHeader toggleSidebar={toggleSidebar} />
 
         <div className="px-2 md:px-4 [@media(min-width:1100px)]:px-16 py-4 md:py-8">
+          <BackButton />
+
           {/* Header */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
             <div>

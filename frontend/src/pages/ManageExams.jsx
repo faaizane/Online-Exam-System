@@ -166,7 +166,7 @@ export default function ManageExams() {
                             <div
                               key={idx}
                               onClick={() =>
-                                navigate('/examschedule', {
+                                navigate('/examsubjects', {
                                   state: {
                                     year: group.year,
                                     session: group.session,

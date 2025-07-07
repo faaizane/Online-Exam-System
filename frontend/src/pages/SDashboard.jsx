@@ -33,6 +33,8 @@ export default function SDashboard() {
   const [upcomingExams, setUpcomingExams] = useState([]);
   const [recentResults, setRecentResults] = useState([]);
   const [refreshKey, setRefreshKey] = useState(0); // Force re-render when submission changes
+  const [expanded, setExpanded] = useState(null);
+  const [userName, setUserName] = useState('');
 
   const navigate = useNavigate();
   const toggleSidebar = () => setSidebarOpen(o => !o);
@@ -170,6 +172,20 @@ export default function SDashboard() {
     loadRecent();
   }, [API_BASE_URL]);
 
+  useEffect(() => {
+    async function fetchMe(){
+      try{
+        const token = sessionStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/auth/me`,{headers:{Authorization:`Bearer ${token}`}});
+        if(res.ok){
+          const data=await res.json();
+          setUserName(data.user?.name || '');
+        }
+      }catch{}
+    }
+    fetchMe();
+  }, [API_BASE_URL]);
+
   return (
     <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
@@ -183,7 +199,7 @@ export default function SDashboard() {
             Dashboard
           </h1>
           <p className="text-[16px] md:text-lg text-gray-600 mb-8">
-            Welcome back, Student Name
+            Welcome back{userName ? `, ${userName}` : ''}
           </p>
 
           <section className="mb-12">

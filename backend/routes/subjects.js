@@ -77,4 +77,12 @@ router.delete(
   subjectController.removeStudentFromSubject
 );
 
+// Student – list their subjects
+router.get(
+  '/mine',
+  protect,
+  authorize('student'),
+  subjectController.getMySubjects
+);
+
 module.exports = router;

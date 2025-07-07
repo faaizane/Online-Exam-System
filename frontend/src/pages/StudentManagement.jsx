@@ -120,6 +120,11 @@ export default function StudentManagement() {
                       <h3 className="text-xl font-semibold tracking-tight text-gray-800 truncate group-hover:text-[#002855] transition-colors duration-300">
                         {capitalize(sub.name)}
                       </h3>
+                      {sub.section && (
+                        <p className="text-sm text-gray-600">
+                          {capitalize(sub.section)}
+                        </p>
+                      )}
                       <p className="text-sm text-gray-500">
                         {ordinal(sub.semester)} Semester
                       </p>

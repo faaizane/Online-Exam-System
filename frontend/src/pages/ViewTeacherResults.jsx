@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
+import BackButton from '../components/BackButton';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function ViewResults() {
@@ -61,6 +62,8 @@ export default function ViewResults() {
         <Header toggleSidebar={toggleSidebar} />
 
         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8 space-y-6">
+          <BackButton />
+
           <h1 className="text-[22px] md:text-4xl font-bold text-[#002855]">
             {pageTitle}
           </h1>

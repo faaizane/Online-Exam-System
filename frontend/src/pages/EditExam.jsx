@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
+import BackButton from '../components/BackButton';
 import StudentSelectionModal from '../components/StudentSelectionModal';
 
 export default function EditExam() {
@@ -187,7 +188,7 @@ export default function EditExam() {
         }, 1500);
       } else {
         const data = await res.json();
-        setPopup({ show: true, message: `Error: ${data.message}`, type: 'error' });
+        setPopup({ show: true, message: data.message, type: 'error' }); // Removed 'Error:' prefix
       }
     } catch {
       setPopup({ show: true, message: 'Server error. Please try again.', type: 'error' });
@@ -218,6 +219,10 @@ export default function EditExam() {
       <div className="flex-1 flex flex-col [@media(min-width:945px)]:ml-64">
         <Header toggleSidebar={toggleSidebar} />
 
+        <div className="px-4 md:px-16 py-6">
+          <BackButton />
+        </div>
+
         <div className="relative flex-1 overflow-hidden">
           <form
             onSubmit={handleSubmit}
@@ -239,20 +244,27 @@ export default function EditExam() {
             </div>
             <div>
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Subject</label>
-              <select
-                name="subject"
-                value={form.subject}
-                onChange={handleFormChange}
-                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 cursor-pointer appearance-none pr-10"
-                required
-              >
-                <option value="">— Select Subject —</option>
-                {subjects.map(s => (
-                  <option key={s._id} value={s._id}>
-                    {s.name} — {s.session.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')} {s.year} (Sem {s.semester})
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  name="subject"
+                  value={form.subject}
+                  onChange={handleFormChange}
+                  className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 cursor-pointer appearance-none pr-10"
+                  required
+                >
+                  <option value="">— Select Subject —</option>
+                  {subjects.map(s => (
+                    <option key={s._id} value={s._id}>
+                      {s.name} - {s.semester} {s.section.charAt(0).toUpperCase() + s.section.slice(1)} - {s.session.charAt(0).toUpperCase() + s.session.slice(1)}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none">
+                  <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 011.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
+              </div>
             </div>
             <div>
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Session</label>
@@ -513,7 +525,7 @@ export default function EditExam() {
               )}
               <div className="flex-1">
                 <h4 className={`text-sm font-semibold ${popup.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
-                  {popup.type === 'success' ? 'Success!' : 'Error!'}
+                  {popup.type === 'success' ? 'Success!' : 'Exam Update Error'}
                 </h4>
                 <p className={`text-xs mt-1 ${popup.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
                   {popup.message}

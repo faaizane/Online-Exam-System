@@ -16,6 +16,7 @@ export default function StudentProfile() {
     email: '',
     department: '',
     semester: '',
+    section: '',
     registrationNumber: ''
   });
 
@@ -36,11 +37,13 @@ export default function StudentProfile() {
         const { user } = await res.json();
         if (user.role !== 'student') throw new Error();
 
+        const capSection = user.section ? user.section.toUpperCase() : '';
         setUser({
           name: user.name,
           email: user.email,
           department: user.department,
           semester: `${user.semester}th Semester`,
+          section: capSection,
           registrationNumber: user.registrationNumber
         });
       } catch {
@@ -111,6 +114,12 @@ export default function StudentProfile() {
                   Semester
                 </label>
                 <div className="p-3 bg-gray-100 rounded-lg">{user.semester}</div>
+              </div>
+              <div>
+                <label className="block font-medium text-gray-600 mb-1">
+                  Section
+                </label>
+                <div className="p-3 bg-gray-100 rounded-lg">{user.section}</div>
               </div>
               <div>
                 <label className="block font-medium text-gray-600 mb-1">

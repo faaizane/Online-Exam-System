@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
+import BackButton from '../components/BackButton';
 import axios from 'axios';
 
 export default function SubjectStudents() {
@@ -17,6 +18,7 @@ export default function SubjectStudents() {
 
   const [subjectName, setSubjectName] = useState('');
   const [subjectSem, setSubjectSem] = useState(null);
+  const [subjectSection, setSubjectSection] = useState('');
   const [students, setStudents] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [semesters, setSemesters] = useState([]);
@@ -24,6 +26,7 @@ export default function SubjectStudents() {
 
   const [bulkDept, setBulkDept] = useState('');
   const [bulkSem, setBulkSem] = useState('');
+  const [bulkSection, setBulkSection] = useState('');
   const [regNo, setRegNo] = useState('');
   const [msg, setMsg] = useState('');
   const [showPanel, setShowPanel] = useState(false);
@@ -34,6 +37,7 @@ export default function SubjectStudents() {
   const [editSession, setEditSession] = useState('');
   const [editYear, setEditYear] = useState('');
   const [editSemester, setEditSemester] = useState('');
+  const [editSection, setEditSection] = useState('');
 
   const ordinal = num => {
     const n = parseInt(num, 10);
@@ -55,10 +59,12 @@ export default function SubjectStudents() {
         console.log('Subject API response:', res.data); // Debug log
         setSubjectName(res.data.name || 'Unknown Subject');
         setSubjectSem(parseInt(res.data.semester, 10) || 1);
+        setSubjectSection(res.data.section || '');
         setEditName(res.data.name || '');
         setEditSession(res.data.session || '');
         setEditYear(res.data.year || '');
         setEditSemester(res.data.semester || '');
+        setEditSection(res.data.section || '');
       })
       .catch(err => {
         console.error('Error fetching subject:', err);
@@ -128,14 +134,14 @@ export default function SubjectStudents() {
   }, [id, token, navigate]);
 
   const handleBulkAdd = async () => {
-    if (!bulkDept || !bulkSem) {
-      setMsg('Choose both department and semester');
+    if (!bulkDept || !bulkSem || !bulkSection) {
+      setMsg('Choose department, semester and section');
       return;
     }
     try {
       await axios.post(
         `${API_BASE_URL}/api/subjects/${id}/students/bulk`,
-        { department: bulkDept, semester: bulkSem },
+        { department: bulkDept, semester: bulkSem, section: bulkSection },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setMsg('Bulk add succeeded');
@@ -186,7 +192,8 @@ export default function SubjectStudents() {
           name: editName,
           session: editSession.trim().toLowerCase(),
           year: Number(editYear),
-          semester: Number(editSemester)
+          semester: Number(editSemester),
+          section: editSection.trim().toLowerCase()
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -234,12 +241,7 @@ export default function SubjectStudents() {
         <Header toggleSidebar={toggleSidebar} />
 
         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">
-          <button
-            onClick={() => navigate('/studentmanagement')}
-            className="mb-4 text-sm text-[#002855] hover:underline"
-          >
-            ← Back to Subjects
-          </button>
+          <BackButton />
 
           {/* Global error message */}
           {msg && (
@@ -260,7 +262,7 @@ export default function SubjectStudents() {
           
           <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
             <h1 className="text-[22px] md:text-4xl font-bold text-[#002855]">
-              Students in {subjectName} — {ordinal(subjectSem)} Semester
+              Students in {subjectName}{subjectSection ? ` - ${subjectSection.toUpperCase()}` : ''} — {ordinal(subjectSem)} Semester
             </h1>
             <div className="flex gap-2 mt-4 sm:mt-0">
               <button
@@ -353,6 +355,15 @@ export default function SubjectStudents() {
                       className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                     />
                   </div>
+                  {/* Section */}
+                  <div>
+                    <label className="block mb-1 font-medium text-gray-700">Section</label>
+                    <input
+                      value={editSection}
+                      onChange={e => setEditSection(e.target.value)}
+                      className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-4">
                   <button
@@ -400,9 +411,9 @@ export default function SubjectStudents() {
                         onChange={e => setBulkDept(e.target.value)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       >
-                        <option value="">-- Select Department --</option>
-                        {departments.map(dep => (
-                          <option key={dep} value={dep}>{dep}</option>
+                        <option value="">-- Select Dept --</option>
+                        {departments.map(d => (
+                          <option key={d} value={d}>{d}</option>
                         ))}
                       </select>
                     </div>
@@ -413,9 +424,22 @@ export default function SubjectStudents() {
                         onChange={e => setBulkSem(e.target.value)}
                         className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       >
-                        <option value="">-- Select Semester --</option>
-                        {semesters.map(sem => (
-                          <option key={sem} value={sem}>{sem}</option>
+                        <option value="">-- Select Sem --</option>
+                        {semesters.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block mb-1 font-medium text-gray-700">Section</label>
+                      <select
+                        value={bulkSection}
+                        onChange={e => setBulkSection(e.target.value)}
+                        className="w-full border border-gray-300 px-3 py-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                      >
+                        <option value="">-- Select Section --</option>
+                        {['A','B','C','D'].map(sec => (
+                          <option key={sec} value={sec}>{sec}</option>
                         ))}
                       </select>
                     </div>

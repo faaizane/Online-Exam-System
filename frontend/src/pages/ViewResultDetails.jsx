@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
 import SHeader from '../components/SHeader';
+import BackButton from '../components/BackButton';
 
 // Utility function to convert numbers to ordinal strings
 function getOrdinalSuffix(num) {
@@ -43,6 +44,7 @@ export default function ViewResultDetail() {
       <div className="flex-1 flex flex-col [@media(min-width:945px)]:ml-64">
         <SHeader toggleSidebar={toggleSidebar} />
         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">
+          <BackButton />
 
           {/* Header */}
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">

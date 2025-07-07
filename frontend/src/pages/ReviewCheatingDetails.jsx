@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
+import BackButton from '../components/BackButton';
 
 export default function ReviewCheatingDetails() {
   const navigate = useNavigate();
@@ -74,12 +75,7 @@ export default function ReviewCheatingDetails() {
         <Header toggleSidebar={toggleSidebar} />
 
         <div className="px-4 py-6 lg:px-16 space-y-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-[#0073E6] hover:underline"
-          >
-            ← Back
-          </button>
+          <BackButton />
 
           <h1 className="text-2xl md:text-3xl font-bold text-[#002855]">
             {year} – {capitalize(session)} ({ordinal(semester)} Semester)

@@ -10,6 +10,7 @@ export default function TakeExam() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sections, setSections] = useState([]);
   const [expanded, setExpanded] = useState(null);
+  const [subjectsOnly, setSubjectsOnly] = useState([]);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -58,6 +59,21 @@ export default function TakeExam() {
     loadAvailable();
   }, [API_BASE_URL]);
 
+  useEffect(() => {
+    async function loadSubjects() {
+      try {
+        const token = sessionStorage.getItem('token');
+        const res = await fetch(`${API_BASE_URL}/api/subjects/mine`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error();
+        const list = await res.json();
+        setSubjectsOnly(list);
+      } catch {}
+    }
+    loadSubjects();
+  }, [API_BASE_URL]);
+
   const toggleSidebar = () => setSidebarOpen(o => !o);
   const toggleSection = id => setExpanded(expanded === id ? null : id);
 
@@ -73,10 +89,16 @@ export default function TakeExam() {
           </h1>
 
           {sections.map(sec => {
-            const bySubject = sec.exams.reduce((acc, e) => {
+            const examsBySubject = sec.exams.reduce((acc, e) => {
               (acc[e.subjectName] ||= []).push(e);
               return acc;
             }, {});
+
+            subjectsOnly.forEach(s => {
+              if (s.year === sec.label.split(' ')[0] && s.session === sec.label.split(' ')[2].toLowerCase()) {
+                if (!examsBySubject[s.name]) examsBySubject[s.name] = [];
+              }
+            });
 
             return (
               <section key={sec.id} className="mb-6">
@@ -93,11 +115,13 @@ export default function TakeExam() {
 
                   {expanded === sec.id && (
                     <div className="divide-y divide-gray-200">
-                      {Object.entries(bySubject).map(([subjectName, exams]) => (
+                      {Object.entries(examsBySubject).map(([subjectName, exams]) => (
                         <div
                           key={subjectName}
                           onClick={() =>
-                            navigate('/take-exam/test-page', { state: { exams } })
+                            exams.length
+                              ? navigate('/take-exam/test-page', { state: { exams } })
+                              : alert('No exams scheduled yet for this subject.')
                           }
                           className="px-4 md:px-6 py-2 md:py-3 bg-white cursor-pointer hover:bg-gray-100 transition flex items-center"
                         >

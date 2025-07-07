@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BiLoaderAlt } from 'react-icons/bi';
@@ -20,6 +19,9 @@ export default function GiveExam() {
   const [submitted, setSubmitted] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [score, setScore] = useState(null);
+  const [submitReason, setSubmitReason] = useState('');
+  // Track connection status to pause exam when offline
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL || 'http://127.0.0.1:5001';
@@ -118,6 +120,7 @@ export default function GiveExam() {
         const result = await response.json();
         if (result.status === 'cheat_detected') {
           console.log('🚨 IMMEDIATE CHEAT DETECTED:', result.reason);
+          setSubmitReason(result.reason || 'Cheating detected');
           handleSubmit();
           return;
         }
@@ -316,6 +319,7 @@ export default function GiveExam() {
 
   const onTabChange = () => {
     if (!submitted && !alreadySubmitted && document.hidden) {
+      setSubmitReason('Tab change detected');
       handleSubmit();
     }
   };
@@ -337,6 +341,7 @@ export default function GiveExam() {
 
   // Dummy handleBlur for useCallback dependency, real one is inside useEffect
   const handleBlur = useCallback(() => {
+    setSubmitReason('Tab change detected');
     handleSubmit();
   }, [handleSubmit]);
 
@@ -384,6 +389,7 @@ export default function GiveExam() {
     // Blur event handler (minimize/focus change/app switch)
     const blurEventHandler = () => {
       console.log('Window blur detected (minimize/focus change/app switch), auto-submitting...');
+      setSubmitReason('Tab change detected');
       handleSubmit();
     };
 
@@ -518,17 +524,18 @@ export default function GiveExam() {
   }, [exam, timeLeft, alreadySubmitted]);
 
   useEffect(() => {
-    if (timeLeft == null || submitted) return;
+    if (timeLeft == null || submitted || isOffline) return;
     if (timeLeft <= 0) {
+      setSubmitReason('Time finished');
       handleSubmit();
       return;
     }
     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
     return () => clearTimeout(t);
-  }, [timeLeft, submitted, handleSubmit]);
+  }, [timeLeft, submitted, isOffline, handleSubmit]);
 
   useEffect(() => {
-    if (!submitted && exam && timeLeft != null) {
+    if (!submitted && exam && timeLeft != null && !isOffline) {
       const token = sessionStorage.getItem('token');
       fetch(`${API_URL}/api/exams/${examId}/progress`, {
         method: 'POST',
@@ -539,10 +546,10 @@ export default function GiveExam() {
         body: JSON.stringify({ answers, timeLeft })
       });
     }
-  }, [answers, timeLeft, exam, submitted, examId, API_URL]);
+  }, [answers, timeLeft, exam, submitted, examId, API_URL, isOffline]);
 
   useEffect(() => {
-    if (exam && !submitted && !alreadySubmitted) {
+    if (exam && !submitted && !alreadySubmitted && !isOffline) {
       const token = sessionStorage.getItem('token');
       const iv = setInterval(async () => {
         try {
@@ -559,13 +566,37 @@ export default function GiveExam() {
       }, 1000); // Check every 1 second instead of 5 seconds
       return () => clearInterval(iv);
     }
-  }, [exam, submitted, alreadySubmitted, examId, API_URL, handleSubmit]);
+  }, [exam, submitted, alreadySubmitted, examId, API_URL, isOffline, handleSubmit]);
+
+  // Listen to browser online/offline events
+  useEffect(() => {
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline  = () => setIsOffline(false);
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online',  handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online',  handleOnline);
+    };
+  }, []);
 
   const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
   const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
 
+  // Overlay shown when offline – blocks interaction and informs user
+  const OfflineOverlay = () => (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/70 text-white backdrop-blur-sm">
+      <div className="bg-white text-red-700 rounded-lg p-6 shadow-xl max-w-md w-full text-center">
+        <h2 className="text-2xl font-bold mb-2">No Internet Connection</h2>
+        <p className="mb-4">Your exam has been paused. Please reconnect to resume.</p>
+        <div className="text-4xl animate-pulse">⚠️</div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+      {isOffline && <OfflineOverlay />}
       {/* Enhanced Side panel with border */}
       <div className="w-full lg:w-80 bg-white border-r-4 border-slate-200 shadow-lg p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
         {/* Camera section with subtle styling */}
@@ -687,6 +718,12 @@ export default function GiveExam() {
                   {Math.round((score / exam.questions.length) * 100)}% Correct
                 </div>
                 
+                {submitReason && (
+                  <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <strong>Submission Reason:</strong> {submitReason}
+                  </div>
+                )}
+
                 {/* Detailed breakdown */}
                 <div className="mt-4 pt-4 border-t border-slate-200">
                   <div className="grid grid-cols-3 gap-4 text-center">

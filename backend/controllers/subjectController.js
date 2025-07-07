@@ -6,7 +6,7 @@ const User    = require('../models/User');
 // GET /api/subjects
 exports.getSubjects = async (req, res) => {
   try {
-    // Only this teacher’s subjects
+    // Only this teacher's subjects
     const filter = { teacher: req.user.id };
     // If a year query param is provided, only fetch that year
     if (req.query.year) {
@@ -43,13 +43,14 @@ exports.getSubjectById = async (req, res) => {
 
 // In createSubject:
 exports.createSubject = async (req, res) => {
-  let { name, session, year, semester } = req.body;
+  let { name, session, year, semester, section = '' } = req.body;
   if (!name || !session || !year || !semester) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
 
   // normalize session to lowercase
   session = session.trim().toLowerCase();
+  section = section.toString().trim().toLowerCase();
 
   try {
     const newSub = new Subject({
@@ -57,6 +58,7 @@ exports.createSubject = async (req, res) => {
       session,
       year,
       semester,
+      section,
       teacher:    req.user.id,
       students:   []
     });
@@ -134,9 +136,9 @@ exports.addStudentToSubject = async (req, res) => {
 
 // POST /api/subjects/:id/students/bulk
 exports.bulkAddStudents = async (req, res) => {
-  const { department, semester } = req.body;
-  if (!department || semester == null) {
-    return res.status(400).json({ message: 'department and semester required' });
+  const { department, semester, section } = req.body;
+  if (!department || semester == null || !section) {
+    return res.status(400).json({ message: 'department, semester and section required' });
   }
   try {
     const sub = await Subject.findById(req.params.id);
@@ -146,7 +148,8 @@ exports.bulkAddStudents = async (req, res) => {
     const candidates = await User.find({
       role: 'student',
       department: { $regex: `^${department}$`, $options: 'i' },
-      semester:   parseInt(semester, 10)
+      semester:   parseInt(semester, 10),
+      section:    { $regex: `^${section}$`, $options: 'i' }
     }).select('_id');
 
     const existingIds = sub.students.map(id => id.toString());
@@ -194,7 +197,7 @@ exports.removeStudentFromSubject = async (req, res) => {
 
 // PUT /api/subjects/:id
 exports.updateSubject = async (req, res) => {
-  const { name, session, year, semester } = req.body;
+  const { name, session, year, semester, section = '' } = req.body;
   if (!name || !session || !year || !semester) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
@@ -213,6 +216,7 @@ exports.updateSubject = async (req, res) => {
     sub.session  = session.trim().toLowerCase();
     sub.year     = year;
     sub.semester = semester;
+    sub.section  = section.toString().trim().toLowerCase();
     await sub.save();
 
     res.json(sub);
@@ -243,6 +247,19 @@ exports.deleteSubject = async (req, res) => {
   } catch (err) {
     console.error('deleteSubject error:', err);
     return res.status(500).json({ message: 'Server error deleting subject' });
+  }
+};
+
+// GET /api/subjects/mine (student)
+exports.getMySubjects = async (req, res) => {
+  try {
+    const subs = await Subject.find({ students: req.user.id })
+      .select('name session year semester section')
+      .lean();
+    res.json(subs);
+  } catch (err) {
+    console.error('getMySubjects error:', err);
+    res.status(500).json({ message: 'Server error fetching your subjects' });
   }
 };
 

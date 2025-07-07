@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
 import SHeader from '../components/SHeader';
+import BackButton from '../components/BackButton';
 
 export default function ViewResult() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,6 +58,7 @@ export default function ViewResult() {
         <SHeader toggleSidebar={toggleSidebar} />
 
         <div className="px-2 md:px-4 [@media(min-width:1100px)]:px-16 py-4 md:py-8">
+          <BackButton />
           <h1 className="text-4xl font-bold text-[#002855] mb-6">My Results</h1>
 
           {sections.map(sec => (

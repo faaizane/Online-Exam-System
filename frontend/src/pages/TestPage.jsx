@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
 import SHeader from '../components/SHeader';
+import BackButton from '../components/BackButton';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -241,7 +242,7 @@ export default function TestPage() {
    * 🔄 GLOBAL watcher ‑ if *any* `submission_*` key changes, refresh the list so
    *     status badges update even for exams beyond the first element.
    *     Keeps existing logic intact but closes the gap where another exam row
-   *     was attempted and wasn’t being listened for.
+   *     was attempted and wasn't being listened for.
    */
   useEffect(() => {
     const bump = () => setRefreshKey(k => k + 1);
@@ -358,7 +359,10 @@ const Layout = ({ children, sidebarOpen, toggleSidebar }) => (
     <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
     <div className="flex-1 flex flex-col [@media(min-width:945px)]:ml-64">
       <SHeader toggleSidebar={toggleSidebar} />
-      <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">{children}</div>
+      <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8">
+        <BackButton />
+        {children}
+      </div>
     </div>
   </div>
 );

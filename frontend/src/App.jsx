@@ -37,6 +37,7 @@ import ExamSchedule from './pages/ExamSchedule';
 import TeacherProfile from './pages/TeacherProfile';
 import SubjectStudents from './pages/SubjectStudents';
 import AddSubject from './pages/AddSubject';
+import ExamSubjects from './pages/ExamSubjects';
 
 export default function App() {
   return (
@@ -103,6 +104,9 @@ export default function App() {
         } />
         <Route path="/examschedule" element={
           <PrivateRoute allowedRoles={['teacher']}><ExamSchedule /></PrivateRoute>
+        } />
+        <Route path="/examsubjects" element={
+          <PrivateRoute allowedRoles={['teacher']}><ExamSubjects /></PrivateRoute>
         } />
         <Route path="/teacherprofile" element={
           <PrivateRoute allowedRoles={['teacher']}><TeacherProfile /></PrivateRoute>

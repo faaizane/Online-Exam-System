@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from '../components/TSidebar';
 import Header from '../components/THeader';
+import BackButton from '../components/BackButton';
 
 // Status component with styling for teacher exam schedule
 const StatusBadge = ({ status }) => {
@@ -26,7 +27,7 @@ const StatusBadge = ({ status }) => {
 };
 
 export default function ExamSchedule() {
-  const { year, session, semester } = useLocation().state || {};
+  const { year, session, semester, subjectId, subjectName } = useLocation().state || {};
   const navigate = useNavigate();
   const [exams, setExams] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -60,14 +61,21 @@ export default function ExamSchedule() {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error();
-        setExams(await res.json());
+        let fetched = await res.json();
+        if (subjectId) {
+          fetched = fetched.filter(e => {
+            const id = e.subject?._id || e.subject; // subject could be populated or just id
+            return id === subjectId;
+          });
+        }
+        setExams(fetched);
       } catch {
         alert('Failed to fetch exams');
       }
     }
 
     fetchExams();
-  }, [year, session, semester]);
+  }, [year, session, semester, subjectId]);
 
   const upcoming = exams.filter(e => e.status !== 'Completed');
   const completed = exams.filter(e => e.status === 'Completed');
@@ -95,11 +103,12 @@ export default function ExamSchedule() {
       <div className="flex-1 flex flex-col [@media(min-width:945px)]:ml-64">
         <Header toggleSidebar={toggleSidebar} />
         <div className="px-2 md:px-4 lg:px-16 py-4 md:py-8 space-y-12">
+          <BackButton />
 
           {/* ───── Upcoming Exams ───── */}
           <section>
             <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-4">
-              Upcoming Exams – Semester {semester}
+              Upcoming Exams – {subjectName ? subjectName + ' – ' : ''}Semester {semester}
             </h1>
 
             {upcoming.length === 0 ? (
@@ -197,7 +206,7 @@ export default function ExamSchedule() {
           {/* ───── Completed Exams ───── */}
           <section>
             <h1 className="text-[22px] md:text-4xl font-bold text-[#002855] mb-4">
-              Completed Exams – Semester {semester}
+              Completed Exams – {subjectName ? subjectName + ' – ' : ''}Semester {semester}
             </h1>
 
             {completed.length === 0 ? (
