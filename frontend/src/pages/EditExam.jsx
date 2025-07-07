@@ -284,22 +284,26 @@ export default function EditExam() {
                 className="w-full bg-gray-50 border-2 border-gray-200 px-4 py-3 rounded-xl text-gray-600 shadow-sm cursor-not-allowed"
               />
             </div>
-            <div className="md:col-span-2">
+            <div>
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Exam Number</label>
               <input
                 name="examNo"
                 value={form.examNo}
                 onChange={handleFormChange}
+                placeholder="Enter exam number"
                 className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                 required
               />
             </div>
             <div>
-              <label className="block mb-2 font-semibold text-[#002855] text-sm">Duration (min)</label>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Duration (minutes)</label>
               <input
-                name="duration" type="number" min="1"
+                name="duration"
+                type="number"
+                min="1"
                 value={form.duration}
                 onChange={handleFormChange}
+                placeholder="e.g. 60"
                 className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
                 required
               />

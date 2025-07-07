@@ -20,14 +20,10 @@ cron.schedule('*/5 * * * *', async () => {
   try {
     console.log('[AUTO-SUBMIT] Starting auto-submit job...');
     
-    // 20 minutes se purani progress, but exclude paused ones
+    // 20 minutes se purani progress
     const cutoff = new Date(Date.now() - 20 * 60 * 1000);
     const expired = await Progress.find({
-      updatedAt: { $lt: cutoff },
-      $or: [
-        { isPaused: { $ne: true } }, // Not paused
-        { isPaused: true, resumeAllowedUntil: { $lt: new Date() } } // Paused but resume window expired
-      ]
+      updatedAt: { $lt: cutoff }
     }).lean();
 
     console.log(`[AUTO-SUBMIT] Found ${expired.length} expired progress records`);

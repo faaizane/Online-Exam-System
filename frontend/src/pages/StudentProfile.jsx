@@ -123,15 +123,15 @@ export default function StudentProfile() {
               </div>
               <div>
                 <label className="block font-medium text-gray-600 mb-1">
-                  Email
-                </label>
-                <div className="p-3 bg-gray-100 rounded-lg">{user.email}</div>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block font-medium text-gray-600 mb-1">
                   Department
                 </label>
                 <div className="p-3 bg-gray-100 rounded-lg">{user.department}</div>
+              </div>
+              <div>
+                <label className="block font-medium text-gray-600 mb-1">
+                  Email
+                </label>
+                <div className="p-3 bg-gray-100 rounded-lg">{user.email}</div>
               </div>
             </div>
           </div>
