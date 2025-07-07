@@ -22,9 +22,151 @@ export default function GiveExam() {
   const [submitReason, setSubmitReason] = useState('');
   // Track connection status to pause exam when offline
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  // Power outage detection
+  const [isPowerOutage, setIsPowerOutage] = useState(false);
+  const [pausedProgress, setPausedProgress] = useState(null);
+  const lastActivityRef = useRef(Date.now());
 
   const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL || 'http://127.0.0.1:5001';
+
+  // Power outage detection and timer management functions
+  const detectPowerOutage = useCallback(() => {
+    if (!examId) return false;
+    
+    const lastActivity = localStorage.getItem(`lastActivity_${examId}`);
+    const timerState = localStorage.getItem(`timerState_${examId}`);
+    
+    if (lastActivity && timerState) {
+      const timeSinceLastActivity = Date.now() - parseInt(lastActivity);
+      const POWER_OUTAGE_THRESHOLD = 10000; // 10 seconds
+      
+      if (timeSinceLastActivity > POWER_OUTAGE_THRESHOLD) {
+        console.log('🔋 Power outage detected!');
+        setIsPowerOutage(true);
+        const parsedTimerState = JSON.parse(timerState);
+        setPausedProgress(parsedTimerState);
+        return true;
+      }
+    }
+    return false;
+  }, [examId]);
+
+  const saveTimerState = useCallback(() => {
+    if (exam && timeLeft !== null && !submitted && !alreadySubmitted) {
+      const timerState = {
+        timeLeft,
+        answers,
+        examId,
+        timestamp: Date.now(),
+        isPaused: false
+      };
+      localStorage.setItem(`timerState_${examId}`, JSON.stringify(timerState));
+      localStorage.setItem(`lastActivity_${examId}`, Date.now().toString());
+      lastActivityRef.current = Date.now();
+    }
+  }, [exam, timeLeft, answers, examId, submitted, alreadySubmitted]);
+
+  const clearTimerState = useCallback(() => {
+    if (examId) {
+      localStorage.removeItem(`timerState_${examId}`);
+      localStorage.removeItem(`lastActivity_${examId}`);
+    }
+  }, [examId]);
+
+  const pauseForPowerOutage = useCallback(async () => {
+    if (!examId) return;
+    
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/exams/${examId}/progress/pause`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ reason: 'power_outage' })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Progress paused for power outage:', data);
+        
+        // Update timer state to paused
+        const timerState = {
+          timeLeft,
+          answers,
+          examId,
+          timestamp: Date.now(),
+          isPaused: true,
+          resumeAllowedUntil: data.resumeAllowedUntil
+        };
+        localStorage.setItem(`timerState_${examId}`, JSON.stringify(timerState));
+      }
+    } catch (error) {
+      console.error('Failed to pause progress:', error);
+    }
+  }, [API_URL, examId, timeLeft, answers]);
+
+  const resumeFromPowerOutage = useCallback(async () => {
+    if (!examId) return false;
+    
+    try {
+      const token = sessionStorage.getItem('token');
+      const response = await fetch(`${API_URL}/api/exams/${examId}/progress/resume`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Progress resumed from power outage:', data);
+        
+        // Restore state from server
+        setAnswers(data.answers || {});
+        setTimeLeft(data.timeLeft);
+        setIsPowerOutage(false);
+        setPausedProgress(null);
+        clearTimerState();
+        
+        return true;
+      } else {
+        const errorData = await response.json();
+        if (errorData.expired) {
+          console.log('❌ Resume window expired, auto-submitting...');
+          setSubmitReason('Resume window expired');
+          // Set submitted to trigger handleSubmit in a useEffect
+          setSubmitted(true);
+          return false;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to resume progress:', error);
+      return false;
+    }
+  }, [API_URL, examId, clearTimerState]);
+
+  // Power outage detection on mount
+  useEffect(() => {
+    if (examId) {
+      const isPowerOutageDetected = detectPowerOutage();
+      if (isPowerOutageDetected) {
+        console.log('🔋 Power outage detected on mount');
+        // Don't start timer immediately, wait for user to resume
+      }
+    }
+  }, [examId, detectPowerOutage]);
+
+  // Save timer state periodically
+  useEffect(() => {
+    if (!isPowerOutage && !submitted && !alreadySubmitted) {
+      const interval = setInterval(saveTimerState, 2000); // Save every 2 seconds
+      return () => clearInterval(interval);
+    }
+  }, [saveTimerState, isPowerOutage, submitted, alreadySubmitted]);
 
   // Initialize camera
   const initializeCamera = useCallback(async () => {
@@ -167,30 +309,41 @@ export default function GiveExam() {
       e.preventDefault();
       e.returnValue = '';
       
-      // Stop camera and cleanup
-      stopCamera();
-      cleanupAiServer();
+      // Check if this is a potential power outage (sudden close)
+      const isLikelyPowerOutage = !document.hasFocus() || performance.now() < 5000;
       
-      // Immediate localStorage update for cross-window communication
-      const storageKey = `submission_${examId}`;
-      const tempSubmissionId = `temp_${Date.now()}_${examId}`;
-      
-      // Set temporary submission to trigger button change immediately
-      localStorage.setItem(storageKey, tempSubmissionId);
-      sessionStorage.setItem(storageKey, tempSubmissionId);
-      
-      // Send notification to parent window immediately
-      try {
-        if (window.opener && !window.opener.closed) {
-          window.opener.dispatchEvent(new CustomEvent('examSubmitted', {
-            detail: { type: 'examSubmitted', examId: examId, submissionId: tempSubmissionId }
-          }));
+      if (isLikelyPowerOutage) {
+        // Save current state for power outage recovery
+        saveTimerState();
+        // Don't submit, allow resume
+        pauseForPowerOutage();
+      } else {
+        // Normal window close - proceed with submission
+        // Stop camera and cleanup
+        stopCamera();
+        cleanupAiServer();
+        
+        // Immediate localStorage update for cross-window communication
+        const storageKey = `submission_${examId}`;
+        const tempSubmissionId = `temp_${Date.now()}_${examId}`;
+        
+        // Set temporary submission to trigger button change immediately
+        localStorage.setItem(storageKey, tempSubmissionId);
+        sessionStorage.setItem(storageKey, tempSubmissionId);
+        
+        // Send notification to parent window immediately
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.dispatchEvent(new CustomEvent('examSubmitted', {
+              detail: { type: 'examSubmitted', examId: examId, submissionId: tempSubmissionId }
+            }));
+          }
+        } catch (error) {
+          console.log('Could not notify parent window on beforeunload:', error);
         }
-      } catch (error) {
-        console.log('Could not notify parent window on beforeunload:', error);
       }
     }
-  }, [submitted, alreadySubmitted, exam, examId, stopCamera, cleanupAiServer]);
+  }, [submitted, alreadySubmitted, exam, examId, stopCamera, cleanupAiServer, saveTimerState, pauseForPowerOutage]);
 
   const handleSubmit = useCallback(async (isWindowClosing = false) => {
     console.log('🔥 HandleSubmit called:', { isWindowClosing, submitted, alreadySubmitted, examExists: !!exam });
@@ -305,6 +458,9 @@ export default function GiveExam() {
     
     // Cleanup AI server
     cleanupAiServer();
+    
+    // Clear timer state from localStorage
+    clearTimerState();
   }, [
     submitted,
     alreadySubmitted,
@@ -314,7 +470,8 @@ export default function GiveExam() {
     API_URL,
     beforeUnloadHandler,
     stopCamera,
-    cleanupAiServer
+    cleanupAiServer,
+    clearTimerState
   ]);
 
   const onTabChange = () => {
@@ -524,7 +681,7 @@ export default function GiveExam() {
   }, [exam, timeLeft, alreadySubmitted]);
 
   useEffect(() => {
-    if (timeLeft == null || submitted || isOffline) return;
+    if (timeLeft == null || submitted || isOffline || isPowerOutage) return;
     if (timeLeft <= 0) {
       setSubmitReason('Time finished');
       handleSubmit();
@@ -532,10 +689,10 @@ export default function GiveExam() {
     }
     const t = setTimeout(() => setTimeLeft(t => t - 1), 1000);
     return () => clearTimeout(t);
-  }, [timeLeft, submitted, isOffline, handleSubmit]);
+  }, [timeLeft, submitted, isOffline, isPowerOutage, handleSubmit]);
 
   useEffect(() => {
-    if (!submitted && exam && timeLeft != null && !isOffline) {
+    if (!submitted && exam && timeLeft != null && !isOffline && !isPowerOutage) {
       const token = sessionStorage.getItem('token');
       fetch(`${API_URL}/api/exams/${examId}/progress`, {
         method: 'POST',
@@ -544,12 +701,12 @@ export default function GiveExam() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({ answers, timeLeft })
-      });
+      }).catch(() => {});
     }
-  }, [answers, timeLeft, exam, submitted, examId, API_URL, isOffline]);
+  }, [answers, timeLeft, exam, submitted, examId, API_URL, isOffline, isPowerOutage]);
 
   useEffect(() => {
-    if (exam && !submitted && !alreadySubmitted && !isOffline) {
+    if (exam && !submitted && !alreadySubmitted && !isOffline && !isPowerOutage) {
       const token = sessionStorage.getItem('token');
       const iv = setInterval(async () => {
         try {
@@ -566,7 +723,7 @@ export default function GiveExam() {
       }, 1000); // Check every 1 second instead of 5 seconds
       return () => clearInterval(iv);
     }
-  }, [exam, submitted, alreadySubmitted, examId, API_URL, isOffline, handleSubmit]);
+  }, [exam, submitted, alreadySubmitted, examId, API_URL, isOffline, isPowerOutage, handleSubmit]);
 
   // Listen to browser online/offline events
   useEffect(() => {
@@ -594,9 +751,51 @@ export default function GiveExam() {
     </div>
   );
 
+  // Power outage overlay with resume option
+  const PowerOutageOverlay = () => (
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/80 text-white backdrop-blur-sm">
+      <div className="bg-gradient-to-br from-yellow-50 to-orange-50 text-gray-800 rounded-xl p-8 shadow-2xl max-w-lg w-full mx-4 border-2 border-yellow-300">
+        <div className="text-center mb-6">
+          <div className="text-6xl mb-4">🔋</div>
+          <h2 className="text-2xl font-bold text-orange-800 mb-2">Power Outage Detected</h2>
+          <p className="text-gray-600 mb-4">
+            Your exam was paused due to a power interruption. You have 30 minutes to resume.
+          </p>
+          {pausedProgress && (
+            <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+              <p className="text-sm text-gray-600 mb-2">Saved Progress:</p>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium">Time Left:</span>
+                  <div className="text-lg font-mono">{fmt(pausedProgress.timeLeft || 0)}</div>
+                </div>
+                <div>
+                  <span className="font-medium">Answers:</span>
+                  <div className="text-lg">{Object.keys(pausedProgress.answers || {}).length} saved</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        <button
+          onClick={resumeFromPowerOutage}
+          className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+        >
+          Resume Exam
+        </button>
+        
+        <p className="text-xs text-gray-500 mt-4 text-center">
+          Note: If you don't resume within 30 minutes, your exam will be auto-submitted.
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
       {isOffline && <OfflineOverlay />}
+      {isPowerOutage && <PowerOutageOverlay />}
       {/* Enhanced Side panel with border */}
       <div className="w-full lg:w-80 bg-white border-r-4 border-slate-200 shadow-lg p-6 flex flex-col sticky lg:top-0 h-auto lg:h-screen">
         {/* Camera section with subtle styling */}

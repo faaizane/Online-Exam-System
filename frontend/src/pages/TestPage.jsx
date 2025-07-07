@@ -79,8 +79,8 @@ export default function TestPage() {
   // 1) Exams that were navigated via <Link/>, keeps behaviour for in-app navigation
   const locationExams = state?.exams ?? (state?.exam ? [state.exam] : []);
 
-  // 🔄 Helper: sort exams so the most recent one appears first (descending by date/time)
-  const sortByDateDesc = (arr) => {
+  // 🔄 Helper: sort exams by priority (Ongoing -> Scheduled -> Missed/Attempted) then by date desc within each category
+  const sortByStatusAndDate = (arr) => {
     return [...arr].sort((a, b) => {
       const getTime = (ex) => {
         const dt = new Date(ex.scheduleDate);
@@ -90,12 +90,39 @@ export default function TestPage() {
         }
         return dt.getTime();
       };
-      return getTime(b) - getTime(a); // Descending order (latest first)
+
+      const getStatusPriority = (ex) => {
+        const dt = new Date(ex.scheduleDate);
+        if (ex.scheduleTime) {
+          const [h, m] = ex.scheduleTime.split(':').map(Number);
+          dt.setHours(h, m, 0, 0);
+        }
+        
+        const status = getStatus(ex, dt);
+        switch (status) {
+          case 'Ongoing': return 1; // Highest priority
+          case 'Scheduled': return 2; // Second priority
+          case 'Attempted': return 3; // Third priority
+          case 'Missed': return 3; // Same as attempted
+          default: return 4; // Lowest priority
+        }
+      };
+
+      const priorityA = getStatusPriority(a);
+      const priorityB = getStatusPriority(b);
+
+      // If priorities are different, sort by priority
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+
+      // If same priority, sort by date descending (latest first)
+      return getTime(b) - getTime(a);
     });
   };
 
   // 2) Make it stateful so we can later refresh from backend (already sorted)
-  const [exams, setExams] = useState(() => sortByDateDesc(locationExams));
+  const [exams, setExams] = useState(() => sortByStatusAndDate(locationExams));
 
   const [subId, setSubId] = useState(() => {
     const first = locationExams[0];
@@ -143,7 +170,7 @@ export default function TestPage() {
         }
 
         // Re-use helper for consistent ordering
-        const sortedNext = sortByDateDesc(next);
+        const sortedNext = sortByStatusAndDate(next);
 
         setExams(sortedNext);
         // Force children re-render keys so UI updates cleanly
