@@ -1,2 +1,5 @@
 .env
 env
+txt
+.env.example
+RAILWAY_DEPLOYMENT.md
