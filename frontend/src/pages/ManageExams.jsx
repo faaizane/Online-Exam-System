@@ -47,7 +47,7 @@ export default function ManageExams() {
   };
 
   const capitalize = str =>
-    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    str && str.length > 0 ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : '';
 
   const formatSemesterLabel = code => {
     const num = parseInt(code, 10);

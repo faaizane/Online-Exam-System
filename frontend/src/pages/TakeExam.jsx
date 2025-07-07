@@ -31,7 +31,7 @@ export default function TakeExam() {
           data.map(group => ({
             id: `${group.year}${group.session}`,
             label: `${group.year} – ${
-              group.session.charAt(0).toUpperCase() + group.session.slice(1)
+              group.session ? group.session.charAt(0).toUpperCase() + group.session.slice(1) : ''
             } Semester`,
             exams: group.exams.map(e => ({
               examId:       e._id,

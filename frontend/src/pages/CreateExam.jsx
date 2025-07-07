@@ -66,8 +66,8 @@ export default function CreateExam() {
         setForm(f => ({
           ...f,
           subject: sel._id,
-          session: sel.session,
-          semester: sel.semester.toString()
+          session: sel.session || '',
+          semester: sel.semester ? sel.semester.toString() : ''
         }));
       } else {
         setForm(f => ({ ...f, subject: '', session: '', semester: '' }));
@@ -236,7 +236,7 @@ export default function CreateExam() {
                   <option value="">— Select Subject —</option>
                   {subjects.map(s => (
                     <option key={s._id} value={s._id}>
-                      {s.name} - {s.semester} {s.section.charAt(0).toUpperCase() + s.section.slice(1)} - {s.session.charAt(0).toUpperCase() + s.session.slice(1)}
+                      {s.name} - {s.semester} {s.section ? s.section.charAt(0).toUpperCase() + s.section.slice(1) : ''} - {s.session ? s.session.charAt(0).toUpperCase() + s.session.slice(1) : ''}
                     </option>
                   ))}
                 </select>
@@ -252,7 +252,7 @@ export default function CreateExam() {
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Session</label>
               <input
                 name="session"
-                value={form.session.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
+                value={form.session ? form.session.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ') : ''}
                 disabled
                 className="w-full bg-gray-50 border-2 border-gray-200 px-4 py-3 rounded-xl text-gray-600 shadow-sm cursor-not-allowed"
               />

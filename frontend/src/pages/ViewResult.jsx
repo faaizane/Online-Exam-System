@@ -29,7 +29,7 @@ export default function ViewResult() {
         const transformed = data.map(g => ({
           id: `${g.year}${g.session}`,
           label: `${g.year} – ${
-            g.session.charAt(0).toUpperCase() + g.session.slice(1)
+            g.session ? g.session.charAt(0).toUpperCase() + g.session.slice(1) : ''
           } Semester`,
           subjects: g.items.reduce((acc, it) => {
             (acc[it.subject] ||= []).push(it);
