@@ -21,6 +21,15 @@ router.post(
   subjectController.createSubject
 );
 
+// Student – list their subjects
+router.get(
+  '/mine',
+  protect,
+  authorize('student'),
+  subjectController.getMySubjects
+);
+
+
 // GET students of a specific subject (MOVED BEFORE /:id)
 router.get(
   '/:id/students',
@@ -77,12 +86,5 @@ router.delete(
   subjectController.removeStudentFromSubject
 );
 
-// Student – list their subjects
-router.get(
-  '/mine',
-  protect,
-  authorize('student'),
-  subjectController.getMySubjects
-);
 
 module.exports = router;
