@@ -311,6 +311,178 @@ def process_frame(student_id, exam_id, token_header, frame_data):
         print(f"Frame processing error: {e}")
         return {"status": "error", "message": str(e)}
 
+def process_frame_practice(student_id, exam_id, frame_data):
+    """Process a single frame for practice sessions - detects cheating but doesn't upload clips"""
+    student_key = f"{student_id}_{exam_id}"
+    counters = get_student_counters(student_id)
+    
+    print(f"🎓 Processing practice frame for student {student_id}")
+    
+    try:
+        # Decode base64 frame
+        frame_bytes = base64.b64decode(frame_data.split(',')[1])
+        nparr = np.frombuffer(frame_bytes, np.uint8)
+        frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        if frame is None:
+            return {"status": "error", "message": "Invalid frame data"}
+        
+        # Store frame for practice (but won't be used for clip generation)
+        counters['FRAME_BUFFER'].append(frame.copy())
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # Get student-specific face mesh instance
+        student_face_mesh = face_mesh_instances[student_id]
+        
+        # Process with MediaPipe face detection with error handling
+        try:
+            mp_res = student_face_mesh.process(rgb)
+        except Exception as mp_error:
+            print(f"🎓 Practice MediaPipe processing error for student {student_id}: {mp_error}")
+            # Create a new face mesh instance if there's an error
+            face_mesh_instances[student_id] = create_face_mesh()
+            student_face_mesh = face_mesh_instances[student_id]
+            try:
+                mp_res = student_face_mesh.process(rgb)
+            except Exception as mp_error2:
+                print(f"🎓 Practice MediaPipe processing failed again for student {student_id}: {mp_error2}")
+                return {"status": "error", "message": "MediaPipe processing failed"}
+
+        # Debug output for detection status
+        detection_status = {
+            'faces_detected': len(mp_res.multi_face_landmarks) if mp_res.multi_face_landmarks else 0,
+            'student_id': student_id,
+            'frame_size': f"{frame.shape[1]}x{frame.shape[0]}"
+        }
+
+        # ── Face checks (same as regular but just log, don't upload) ────────────────────────
+        if mp_res.multi_face_landmarks:
+            counters['NO_FACE_COUNTER'] = 0
+
+            # multiple faces detection
+            if len(mp_res.multi_face_landmarks) > 1:
+                counters['MULTI_FACE_COUNTER'] += 1
+            else:
+                counters['MULTI_FACE_COUNTER'] = 0
+                
+            if counters['MULTI_FACE_COUNTER'] >= MULTI_FACE_FRAMES:
+                counters['MULTI_FACE_COUNTER'] = 0
+                print(f"🎓 PRACTICE CHEAT DETECTED: Multiple faces - Student {student_id} (not uploaded)")
+                return {"status": "cheat_detected", "reason": "Multiple faces detected (practice)"}
+
+            # single-face head-turn & gaze
+            lm = mp_res.multi_face_landmarks[0].landmark
+            angle = head_pose(lm)
+            counters['HEAD_TURN_COUNTER'] = counters['HEAD_TURN_COUNTER'] + 1 if abs(angle) > HEAD_TURN_ANGLE else 0
+            if counters['HEAD_TURN_COUNTER'] >= HEAD_TURN_FRAMES:
+                print(f"🎓 PRACTICE CHEAT DETECTED: Head turned away - Student {student_id}, Angle: {angle:.1f}° (not uploaded)")
+                counters['HEAD_TURN_COUNTER'] = 0
+                return {"status": "cheat_detected", "reason": "Head turned away (practice)"}
+
+            iris = [lm[i] for i in (468,469,470,471)]
+            left_x, right_x = min(p.x for p in iris), max(p.x for p in iris)
+            ratio = ((left_x+right_x)/2 - lm[33].x) / (lm[133].x - lm[33].x + 1e-6)
+            counters['GAZE_COUNTER'] = counters['GAZE_COUNTER']+1 if (ratio<GAZE_RATIO_MIN or ratio>GAZE_RATIO_MAX) else 0
+            if counters['GAZE_COUNTER'] >= GAZE_FRAMES:
+                print(f"🎓 PRACTICE CHEAT DETECTED: Gaze averted - Student {student_id}, Ratio: {ratio:.3f} (not uploaded)")
+                counters['GAZE_COUNTER'] = 0
+                return {"status": "cheat_detected", "reason": "Gaze averted (practice)"}
+
+        else:
+            counters['MULTI_FACE_COUNTER'] = 0
+            counters['NO_FACE_COUNTER'] += 1
+            if counters['NO_FACE_COUNTER'] >= NO_FACE_FRAMES:
+                print(f"🎓 PRACTICE CHEAT DETECTED: No face detected - Student {student_id} (not uploaded)")
+                counters['NO_FACE_COUNTER'] = 0
+                return {"status": "cheat_detected", "reason": "No face detected (practice)"}
+
+        # ── Object & phone detection ─────────────
+        results = model(rgb, size=640)
+
+        # phone detection
+        phone_seen = False
+        for *_, conf, cls in results.xyxy[0]:
+            if results.names[int(cls)] == 'cell phone' and conf >= PHONE_CONF_THRESH:
+                counters['PHONE_COUNTER'] += 1
+                phone_seen = True
+                break
+        if not phone_seen:
+            counters['PHONE_COUNTER'] = 0
+
+        if counters['PHONE_COUNTER'] >= PHONE_FRAMES:
+            counters['PHONE_COUNTER'] = 0
+            print(f"🎓 PRACTICE CHEAT DETECTED: Cell phone - Student {student_id} (not uploaded)")
+            return {"status": "cheat_detected", "reason": "Cell phone (practice)"}
+
+        # generic objects
+        found, lbl = False, None
+        for *_, _, cls in results.xyxy[0]:
+            if results.names[int(cls)] in OBJECT_CLASSES:
+                found, lbl = True, results.names[int(cls)]
+                break
+
+        counters['OBJECT_COUNTER'] = counters['OBJECT_COUNTER']+1 if found else 0
+        if counters['OBJECT_COUNTER'] >= OBJ_DET_FRAMES:
+            counters['OBJECT_COUNTER'] = 0
+            print(f"🎓 PRACTICE CHEAT DETECTED: Object detected - Student {student_id}, Object: {lbl} (not uploaded)")
+            return {"status": "cheat_detected", "reason": f"Object detected: {lbl} (practice)"}
+
+        # Log detection status periodically for practice
+        if hasattr(process_frame_practice, '_frame_count'):
+            process_frame_practice._frame_count += 1
+        else:
+            process_frame_practice._frame_count = 1
+            
+        if process_frame_practice._frame_count % 10 == 0:  # Log every 10th frame
+            print(f"🎓 Practice Detection Status - Student {student_id}: Faces: {detection_status['faces_detected']}, "
+                  f"Counters: NO_FACE:{counters['NO_FACE_COUNTER']}, MULTI:{counters['MULTI_FACE_COUNTER']}, "
+                  f"HEAD:{counters['HEAD_TURN_COUNTER']}, GAZE:{counters['GAZE_COUNTER']}, "
+                  f"PHONE:{counters['PHONE_COUNTER']}, OBJ:{counters['OBJECT_COUNTER']}")
+
+        return {"status": "success"}
+        
+    except Exception as e:
+        print(f"🎓 Practice frame processing error: {e}")
+        return {"status": "error", "message": str(e)}
+
+@app.route('/process_frame_practice', methods=['POST'])
+def process_frame_practice_endpoint():
+    """API endpoint to process a single frame for practice sessions - logs but doesn't upload clips"""
+    try:
+        data = request.get_json()
+        raw = data.get('token')
+        exam_id = data.get('exam')
+        frame_data = data.get('frame')
+        
+        print(f"🎓 Practice frame processing request: exam_id={exam_id}")
+        
+        if not raw or not exam_id or not frame_data:
+            return jsonify({"error": "Missing required parameters"}), 400
+
+        # Verify it's actually a practice session
+        if exam_id != 'practice':
+            return jsonify({"error": "This endpoint is only for practice sessions"}), 400
+
+        token = raw.split()[-1] if raw.startswith('Bearer ') else raw
+        try:
+            payload = jwt.decode(token, SECRET, algorithms=['HS256'])
+            student_id = payload['userId']
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Token expired"}), 401
+        except Exception:
+            return jsonify({"error": "Invalid token"}), 401
+
+        print(f"🎓 Processing practice frame for student: {student_id}")
+        
+        # Process frame but don't upload any clips
+        result = process_frame_practice(student_id, exam_id, frame_data)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        print(f"❌ Practice frame endpoint error: {e}")
+        return jsonify({"error": "Internal server error"}), 500
+
 @app.route('/process_frame', methods=['POST'])
 def process_frame_endpoint():
     """API endpoint to process a single frame"""

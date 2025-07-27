@@ -456,7 +456,8 @@ export function ActionButton({ exam }) {
   const [submissionId, setSubmissionId] = useState(
     () => sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey) || exam.submissionId
   );
-  const attempted = Boolean(submissionId);
+  const offlineKey = `offline_submitted_${exam._id}`;
+  const attempted = Boolean(submissionId) || !!localStorage.getItem(offlineKey);
 
   // Use localStorage for cross-window detection, sessionStorage for main storage
   useEffect(() => {
@@ -574,13 +575,45 @@ export function ActionButton({ exam }) {
    * -------------------------------------------------------*/
   const isDisabled = attempted ? false : (!ready || expired);
 
-  const label = attempted ? 'View Answers' : (expired ? 'Missed' : 'Start Test');
+  const label = attempted ? 'View Answers' : (expired ? 'Missed' : (navigator.onLine ? 'Start Test' : 'Offline'));
+
+  const markSubmittedOffline = () => {
+    if (!localStorage.getItem(offlineKey)) {
+      // mark offline submission so other tabs/components are aware
+      localStorage.setItem(offlineKey, '1');
+      // also mark as submission placeholder
+      localStorage.setItem(storageKey, 'offline');
+      sessionStorage.setItem(storageKey, 'offline');
+      setSubmissionId('offline');
+    }
+  };
+
+  // auto-mark offline submission on offline or resize events
+  useEffect(() => {
+    const handleOffline = () => {
+      if (!attempted) markSubmittedOffline();
+    };
+    const handleResize = () => {
+      if (!navigator.onLine && !attempted) markSubmittedOffline();
+    };
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [attempted]);
 
   const handleClick = async e => {
     e.stopPropagation();
     if (attempted) {
       navigate(`/view-answers/${submissionId}`);
     } else if (!attempted && ready && !expired) {
+      if (!navigator.onLine) {
+        // offline: treat as submission and block multiple opens
+        markSubmittedOffline();
+        return;
+      }
       try {
         // Check camera permission
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });

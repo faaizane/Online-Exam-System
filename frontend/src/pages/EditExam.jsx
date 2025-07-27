@@ -233,24 +233,14 @@ export default function EditExam() {
           {/* Form Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block mb-2 font-semibold text-[#002855] text-sm">Year</label>
-              <input
-                name="year"
-                value={form.year}
-                onChange={handleFormChange}
-                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
-                required
-              />
-            </div>
-            <div>
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Subject</label>
               <div className="relative">
                 <select
                   name="subject"
                   value={form.subject}
                   onChange={handleFormChange}
-                  className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 cursor-pointer appearance-none pr-10"
                   required
+                  className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400 appearance-none pr-10"
                 >
                   <option value="">— Select Subject —</option>
                   {subjects.map(s => (
@@ -266,6 +256,18 @@ export default function EditExam() {
                 </div>
               </div>
             </div>
+
+            <div>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Year</label>
+              <input
+                name="year"
+                type="text"
+                value={form.year}
+                disabled
+                className="w-full bg-gray-50 border-2 border-gray-200 px-4 py-3 rounded-xl text-gray-600 shadow-sm cursor-not-allowed"
+              />
+            </div>
+
             <div>
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Session</label>
               <input
@@ -275,6 +277,7 @@ export default function EditExam() {
                 className="w-full bg-gray-50 border-2 border-gray-200 px-4 py-3 rounded-xl text-gray-600 shadow-sm cursor-not-allowed"
               />
             </div>
+
             <div>
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Semester</label>
               <input

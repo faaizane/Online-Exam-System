@@ -118,54 +118,66 @@ export default function AddSubject() {
 
             <div>
               <label className="block mb-1 font-medium">Session</label>
-              <input
+              <select
                 name="session"
                 value={form.session}
                 onChange={handleChange}
-                placeholder="e.g. Spring"
                 required
                 className="w-full border px-3 py-2 rounded"
-              />
+              >
+                <option value="">Select Session</option>
+                <option value="Fall">Fall</option>
+                <option value="Spring">Spring</option>
+                <option value="Summer">Summer</option>
+              </select>
             </div>
 
             <div>
               <label className="block mb-1 font-medium">Year</label>
-              <input
+              <select
                 name="year"
-                type="number"
-                min="2000"
-                max="2100"
                 value={form.year}
                 onChange={handleChange}
-                placeholder="e.g. 2025"
                 required
                 className="w-full border px-3 py-2 rounded"
-              />
+              >
+                <option value="">Select Year</option>
+                <option value={new Date().getFullYear() - 1}>{new Date().getFullYear() - 1}</option>
+                <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                <option value={new Date().getFullYear() + 1}>{new Date().getFullYear() + 1}</option>
+              </select>
             </div>
 
             <div>
               <label className="block mb-1 font-medium">Semester</label>
-              <input
+              <select
                 name="semester"
-                type="number"
-                min="1"
-                max="12"
                 value={form.semester}
                 onChange={handleChange}
                 required
                 className="w-full border px-3 py-2 rounded"
-              />
+              >
+                <option value="">Select Semester</option>
+                {[...Array(8).keys()].map(i => (
+                  <option key={i + 1} value={i + 1}>{i + 1}</option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className="block mb-1 font-medium">Section</label>
-              <input
+              <select
                 name="section"
                 value={form.section}
                 onChange={handleChange}
-                placeholder="e.g. A"
+                required
                 className="w-full border px-3 py-2 rounded"
-              />
+              >
+                <option value="">Select Section</option>
+                {Array.from({ length: 10 }, (_, i) => String.fromCharCode(65 + i)).map(section => (
+                  <option key={section} value={section}>{section}</option>
+                ))}
+              </select>
             </div>
 
             <button

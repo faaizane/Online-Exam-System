@@ -16,6 +16,12 @@ router.post(
   async (req, res) => {
     try {
       const { examId, reason } = req.body;
+      
+      // Skip storing cheat clips for practice sessions
+      if (examId === 'practice') {
+        return res.status(201).json({ message: 'Practice cheat detected (not stored)' });
+      }
+      
       if (!req.file) {
         return res.status(400).json({ error: 'No clip uploaded' });
       }
@@ -33,10 +39,11 @@ router.post(
         reason
       });
 
+      console.log('📊 Cheat clip stored successfully for exam:', examId);
       // Return a JSON message
       return res.status(201).json({ message: 'Cheat recorded' });
     } catch (err) {
-      console.error('Cheat upload error:', err);
+      console.error('❌ Cheat upload error:', err);
       return res.status(500).json({ error: err.message });
     }
   }
@@ -183,7 +190,13 @@ router.get(
   async (req, res) => {
     try {
       const examId = req.query.exam;
+      
       if (!examId) return res.status(400).json({ message: 'Missing exam id' });
+
+      // For practice sessions, always return false since we don't store practice cheats
+      if (examId === 'practice') {
+        return res.json({ cheated: false });
+      }
 
       // find any cheat record for this student + this exam in the last minute
       const since = new Date(Date.now() - 60*1000);
@@ -195,14 +208,10 @@ router.get(
 
       res.json({ cheated: !!flag });
     } catch (err) {
-      console.error('Student cheat check error:', err);
+      console.error('❌ Student cheat check error:', err);
       res.status(500).json({ message: 'Server error' });
     }
   }
 );
-
-
-
-
 
 module.exports = router;

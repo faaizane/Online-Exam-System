@@ -33,6 +33,11 @@ export default function SLogin() {
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('role', data.role);
 
+      // Reset guided-tour flags for new session
+      sessionStorage.removeItem('student_guided_steps_done');
+      sessionStorage.removeItem('tour-step1');
+      sessionStorage.removeItem('studentTourComplete');
+
       navigate('/sdashboard');
     } catch (err) {
       alert(err.message);

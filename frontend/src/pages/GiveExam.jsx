@@ -1,15 +1,60 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { BiLoaderAlt } from 'react-icons/bi';
+import { BiLoaderAlt, BiWifi, BiWifiOff } from 'react-icons/bi';
 
 export default function GiveExam() {
   const { id: examId } = useParams();
   const navigate = useNavigate();
+
+  // Copy prevention functions
+  const preventCopy = useCallback((e) => {
+    e.preventDefault();
+    return false;
+  }, []);
+
+  const preventRightClick = useCallback((e) => {
+    e.preventDefault();
+    return false;
+  }, []);
+
+  const preventKeyboardShortcuts = useCallback((e) => {
+    
+    // Prevent Ctrl+C, Ctrl+A, Ctrl+V, Ctrl+X, Ctrl+S, F12, etc.
+    if (e.ctrlKey && (e.key === 'c' || e.key === 'a' || e.key === 'v' || e.key === 'x' || e.key === 's')) {
+      e.preventDefault();
+      return false;
+    }
+    // Prevent F12 (Developer Tools)
+    if (e.key === 'F12') {
+      e.preventDefault();
+      return false;
+    }
+    // Prevent Ctrl+Shift+I (Developer Tools)
+    if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+      e.preventDefault();
+      return false;
+    }
+    // Prevent Ctrl+U (View Source)
+    if (e.ctrlKey && e.key === 'u') {
+      e.preventDefault();
+      return false;
+    }
+  }, []);
+
+  // Ensure JWT token exists in sessionStorage (passed via ?tk=)
+  const queryParams = new URLSearchParams(window.location.search);
+  const passedToken = queryParams.get('tk');
+  if (passedToken && !sessionStorage.getItem('token')) {
+    sessionStorage.setItem('token', passedToken);
+  }
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
   const submittingRef = useRef(false);
   const frameProcessingRef = useRef(false);
+  // Refs for WiFi change state to fix closure issues
+  const isWifiChangeModeRef = useRef(false);
+  const wifiChangeTimeLeftRef = useRef(0);
 
   const [cameraStatus, setCameraStatus] = useState('loading'); // 'loading', 'active', 'inactive', 'error'
   const [aiServerStatus, setAiServerStatus] = useState('checking'); // 'checking', 'active', 'inactive'
@@ -18,13 +63,86 @@ export default function GiveExam() {
   const [timeLeft, setTimeLeft] = useState(null);
   const [submitted, setSubmitted] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  // Check if exam was previously auto-submitted offline
+  const offlineSubmittedKey = `offline_submitted_${examId}`;
+  const [offlineSubmitted, setOfflineSubmitted] = useState(() => !!localStorage.getItem(offlineSubmittedKey));
   const [score, setScore] = useState(null);
   const [submitReason, setSubmitReason] = useState('');
   // Track connection status to pause exam when offline
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  // WiFi change management states
+  const [isWifiChangeMode, setIsWifiChangeMode] = useState(false);
+  const [wifiChangeTimeLeft, setWifiChangeTimeLeft] = useState(0);
+  const [showWifiIcon, setShowWifiIcon] = useState(false);
+  // Allow only 2 WiFi-change attempts per offline session
+  const [wifiChances, setWifiChances] = useState(2);
+  const wifiChancesRef = useRef(2);
 
   const API_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
   const YOLO_BACKEND_URL = import.meta.env.VITE_YOLO_BACKEND_URL || 'http://127.0.0.1:5001';
+
+  // Practice mode flag and dummy exam
+  const isPractice = examId === 'practice';
+
+  const dummyExam = {
+    _id: 'practice',
+    subjectName: 'Practice Test',
+    examNo: 0,
+    semester: 'N/A',
+    duration: 10, // minutes
+    scheduleDate: new Date().toISOString(),
+    scheduleTime: new Date().toTimeString().slice(0,5),
+    questions: [
+      {
+        questionText: 'What is 2 + 2?',
+        options: ['3', '4', '5', '2'],
+        correctAnswerIndex: 1
+      },
+      {
+        questionText: 'Which planet is known as the Red Planet?',
+        options: ['Earth', 'Mars', 'Jupiter', 'Venus'],
+        correctAnswerIndex: 1
+      },
+      {
+        questionText: 'Who wrote the national anthem of Pakistan?',
+        options: ['Allama Iqbal', 'Hafeez Jullundhri', 'Faiz Ahmed Faiz', 'Ahmed Faraz'],
+        correctAnswerIndex: 1
+      }
+    ]
+  };
+
+  // Add copy prevention event listeners
+  useEffect(() => {
+    if (!submitted && exam) {
+      // Add event listeners for copy prevention
+      document.addEventListener('copy', preventCopy);
+      document.addEventListener('contextmenu', preventRightClick);
+      document.addEventListener('keydown', preventKeyboardShortcuts);
+      document.addEventListener('selectstart', preventCopy);
+      document.addEventListener('dragstart', preventCopy);
+
+      // Disable text selection via CSS
+      document.body.style.userSelect = 'none';
+      document.body.style.webkitUserSelect = 'none';
+      document.body.style.mozUserSelect = 'none';
+      document.body.style.msUserSelect = 'none';
+
+      return () => {
+        // Clean up event listeners
+        document.removeEventListener('copy', preventCopy);
+        document.removeEventListener('contextmenu', preventRightClick);
+        document.removeEventListener('keydown', preventKeyboardShortcuts);
+        document.removeEventListener('selectstart', preventCopy);
+        document.removeEventListener('dragstart', preventCopy);
+
+        // Re-enable text selection
+        document.body.style.userSelect = '';
+        document.body.style.webkitUserSelect = '';
+        document.body.style.mozUserSelect = '';
+        document.body.style.msUserSelect = '';
+      };
+    }
+  }, [submitted, exam, preventCopy, preventRightClick, preventKeyboardShortcuts]);
 
   // Initialize camera
   const initializeCamera = useCallback(async () => {
@@ -101,7 +219,11 @@ export default function GiveExam() {
       const frameData = canvas.toDataURL('image/jpeg', 0.8);
       const token = sessionStorage.getItem('token');
       
-      const response = await fetch(`${YOLO_BACKEND_URL}/process_frame`, {
+      // Use different endpoints for practice vs real exams
+      const endpoint = isPractice ? '/process_frame_practice' : '/process_frame';
+      console.log(`🔍 Processing frame via ${endpoint} for exam: ${examId}`);
+      
+      const response = await fetch(`${YOLO_BACKEND_URL}${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,16 +241,25 @@ export default function GiveExam() {
         // Check if cheat was detected in the response
         const result = await response.json();
         if (result.status === 'cheat_detected') {
-          console.log('🚨 IMMEDIATE CHEAT DETECTED:', result.reason);
-          setSubmitReason(result.reason || 'Cheating detected');
-          handleSubmit();
-          return;
+          if (isPractice) {
+            console.log('🎓 PRACTICE CHEAT DETECTED:', result.reason);
+            console.log('🎓 Practice exam data:', { exam: !!exam, questions: exam?.questions?.length, answers: Object.keys(answers).length });
+            // For practice, also auto-submit to show the training experience
+            setSubmitReason(`Practice: ${result.reason || 'Cheating detected'}`);
+            handleSubmit();
+            return;
+          } else {
+            console.log('🚨 IMMEDIATE CHEAT DETECTED:', result.reason);
+            setSubmitReason(result.reason || 'Cheating detected');
+            handleSubmit();
+            return;
+          }
         }
       }
     } catch (error) {
       console.error('Frame processing error:', error);
     }
-  }, [examId, YOLO_BACKEND_URL]);
+  }, [examId, YOLO_BACKEND_URL, isPractice]);
 
   // Start frame processing loop
   const startFrameProcessing = useCallback(() => {
@@ -193,14 +324,16 @@ export default function GiveExam() {
   }, [submitted, alreadySubmitted, exam, examId, stopCamera, cleanupAiServer]);
 
   const handleSubmit = useCallback(async (isWindowClosing = false) => {
-    console.log('🔥 HandleSubmit called:', { isWindowClosing, submitted, alreadySubmitted, examExists: !!exam });
+    console.log('🔥 HandleSubmit called:', { isWindowClosing, submitted, alreadySubmitted, examExists: !!exam, isPractice });
     
-    if (submittingRef.current || submitted || alreadySubmitted || !exam) {
+    // For practice mode, allow submission without checking exam existence  
+    if (submittingRef.current || submitted || alreadySubmitted || (!exam && !isPractice)) {
       console.log('❌ Submit blocked:', { 
         submittingRef: submittingRef.current, 
         submitted, 
         alreadySubmitted, 
-        examExists: !!exam 
+        examExists: !!exam,
+        isPractice 
       });
       return;
     }
@@ -228,6 +361,45 @@ export default function GiveExam() {
       console.log('Blur listener removal failed:', e);
     }
     window.onpopstate = null;
+
+    if (isPractice) {
+      // Practice mode: always calculate score from latest answers, even on cheating/auto-submit
+      // Always use dummyExam if exam is missing in practice mode
+      const practiceExam = exam && exam.questions ? exam : dummyExam;
+      // Try to get latest answers from storage if answers is empty (closure issue)
+      let latestAnswers = answers;
+      if (Object.keys(latestAnswers).length === 0) {
+        try {
+          const storageKey = `practice_answers_${practiceExam._id}`;
+          const stored = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
+          if (stored) {
+            latestAnswers = JSON.parse(stored);
+            console.log('DEBUG: Loaded answers from storage:', latestAnswers);
+          }
+        } catch (e) { console.log('DEBUG: Could not load answers from storage', e); }
+      }
+      console.log('DEBUG: Practice auto-submit triggered');
+      console.log('DEBUG: practiceExam.questions:', practiceExam.questions);
+      console.log('DEBUG: answers:', latestAnswers);
+      setScore(() => {
+        const calculatedScore = practiceExam.questions.reduce((sum, q, i) => {
+          const ans = latestAnswers[i];
+          const correct = q.correctAnswerIndex;
+          const isCorrect = ans === correct;
+          console.log(`DEBUG: Q${i+1}: ans=${ans}, correct=${correct}, isCorrect=${isCorrect}`);
+          return sum + (isCorrect ? 1 : 0);
+        }, 0);
+        console.log(`🎓 Practice score: ${calculatedScore}/${practiceExam.questions.length}`);
+        return calculatedScore;
+      });
+      // Clean up camera server for practice session
+      try {
+        await cleanupAiServer();
+      } catch (error) {
+        console.error('🎓 Practice cleanup error:', error);
+      }
+      return;
+    }
 
     const arr = exam.questions.map((_, i) => answers[i] ?? null);
     const raw = exam.questions.reduce(
@@ -297,11 +469,13 @@ export default function GiveExam() {
       sessionStorage.setItem(storageKey, fallbackSubmissionId);
     }
     
-    // Cleanup calls
+    // Cleanup calls (skip in practice mode)
+    if (!isPractice) {
     fetch(`${API_URL}/api/exams/${examId}/progress`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` }
     }).catch(() => {});
+    }
     
     // Cleanup AI server
     cleanupAiServer();
@@ -314,11 +488,17 @@ export default function GiveExam() {
     API_URL,
     beforeUnloadHandler,
     stopCamera,
-    cleanupAiServer
+    cleanupAiServer,
+    isPractice
   ]);
 
   const onTabChange = () => {
     if (!submitted && !alreadySubmitted && document.hidden) {
+      // If in WiFi change mode, allow tab changes for WiFi settings
+      if (isWifiChangeModeRef.current && wifiChangeTimeLeftRef.current > 0) {
+        console.log('Tab change allowed during WiFi change window');
+        return;
+      }
       setSubmitReason('Tab change detected');
       handleSubmit();
     }
@@ -341,18 +521,41 @@ export default function GiveExam() {
 
   // Dummy handleBlur for useCallback dependency, real one is inside useEffect
   const handleBlur = useCallback(() => {
+    // If in WiFi change mode, allow blur events for WiFi settings
+    if (isWifiChangeModeRef.current && wifiChangeTimeLeftRef.current > 0) {
+      console.log('HandleBlur allowed during WiFi change window');
+      return;
+    }
     setSubmitReason('Tab change detected');
     handleSubmit();
   }, [handleSubmit]);
 
 
+  // Auto-submit (local) when tab closes during offline
   useEffect(() => {
-    window.addEventListener('beforeunload', beforeUnloadHandler);
+    const handleBeforeUnloadOffline = () => {
+      if (isOffline && !submitted && !alreadySubmitted) {
+        // mark locally as submitted
+        try {
+          localStorage.setItem(offlineSubmittedKey, '1');
+        } catch {}
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnloadOffline);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnloadOffline);
+  }, [isOffline, submitted, alreadySubmitted]);
+
+  useEffect(() => {
+     window.addEventListener('beforeunload', beforeUnloadHandler);
     return () => window.removeEventListener('beforeunload', beforeUnloadHandler);
   }, [beforeUnloadHandler]);
 
   useEffect(() => {
-    const onUnload = () => {
+     const onUnload = () => {
+       if (isOffline && !submitted && !alreadySubmitted) {
+         try { localStorage.setItem(offlineSubmittedKey, '1'); } catch {}
+       }
+
       if (!submitted && !alreadySubmitted && exam) {
         // Call handleSubmit with window closing flag for sendBeacon
         handleSubmit(true);
@@ -388,6 +591,11 @@ export default function GiveExam() {
 
     // Blur event handler (minimize/focus change/app switch)
     const blurEventHandler = () => {
+      // If in WiFi change mode, allow blur events for WiFi settings
+      if (isWifiChangeModeRef.current && wifiChangeTimeLeftRef.current > 0) {
+        console.log('Window blur allowed during WiFi change window');
+        return;
+      }
       console.log('Window blur detected (minimize/focus change/app switch), auto-submitting...');
       setSubmitReason('Tab change detected');
       handleSubmit();
@@ -399,6 +607,12 @@ export default function GiveExam() {
       if (isMobile) {
         console.log('Mobile device detected - skipping resize detection');
         return;
+      }
+
+      // If in WiFi change mode, previously resize was allowed and skipped, but we now treat it as a violation
+      if (isWifiChangeModeRef.current && wifiChangeTimeLeftRef.current > 0) {
+        console.log('Window resize detected during WiFi change window - treating as violation');
+        // Note: we intentionally do NOT return here so that the resize still triggers auto-submit below
       }
 
       const currentWidth = window.innerWidth;
@@ -421,6 +635,12 @@ export default function GiveExam() {
     // Fullscreen change detection (desktop only)
     const fullscreenChangeHandler = () => {
       if (isMobile) return; // Skip on mobile
+      
+      // If in WiFi change mode, allow fullscreen changes for WiFi settings
+      if (isWifiChangeModeRef.current && wifiChangeTimeLeftRef.current > 0) {
+        console.log('Fullscreen change allowed during WiFi change window');
+        return;
+      }
       
       // If user exits fullscreen mode
       if (!document.fullscreenElement && !document.webkitFullscreenElement && 
@@ -459,6 +679,11 @@ export default function GiveExam() {
   useEffect(() => {
     window.history.pushState(null, '', window.location.href);
     window.onpopstate = () => {
+      // If in WiFi change mode, allow popstate events for WiFi settings
+      if (isWifiChangeModeRef.current && wifiChangeTimeLeftRef.current > 0) {
+        console.log('Popstate allowed during WiFi change window');
+        return;
+      }
       if (!submitted && !alreadySubmitted) handleSubmit();
     };
     return () => { window.onpopstate = null; };
@@ -466,29 +691,21 @@ export default function GiveExam() {
     
 
   useEffect(() => {
-    if (!examId) return;
-    (async () => {
-      try {
-        const token = sessionStorage.getItem('token');
-        const res = await fetch(`${API_URL}/api/exams/${examId}/progress`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (res.ok) {
-          const p = await res.json();
-          if (p.timeLeft != null) {
-            setAnswers(p.answers || {});
-            setTimeLeft(p.timeLeft);
+    if (isPractice) {
+      setExam(dummyExam);
+      return;
           }
-        }
-      } catch {}
-    })();
-  }, [examId, API_URL]);
 
-  useEffect(() => {
     if (!examId) return navigate(-1);
     (async () => {
+      // If locally marked offline-submitted, mark as already submitted and skip fetch
+      if (localStorage.getItem(offlineSubmittedKey)) {
+        setAlreadySubmitted(true);
+        setSubmitted(true);
+        return;
+      }
       try {
-        const token =sessionStorage.getItem('token');
+        const token = sessionStorage.getItem('token');
         const res = await fetch(`${API_URL}/api/exams/${examId}/student`, {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -503,11 +720,12 @@ export default function GiveExam() {
         } else {
           setExam(data);
         }
-      } catch {
+      } catch (err) {
+        console.error(err);
         navigate(-1);
       }
     })();
-  }, [examId, navigate]);
+  }, [examId, navigate, isPractice]);
 
   useEffect(() => {
     if (exam && timeLeft == null && !alreadySubmitted) {
@@ -535,7 +753,7 @@ export default function GiveExam() {
   }, [timeLeft, submitted, isOffline, handleSubmit]);
 
   useEffect(() => {
-    if (!submitted && exam && timeLeft != null && !isOffline) {
+    if (!isPractice && exam && !submitted && !alreadySubmitted && !isOffline) {
       const token = sessionStorage.getItem('token');
       fetch(`${API_URL}/api/exams/${examId}/progress`, {
         method: 'POST',
@@ -546,7 +764,7 @@ export default function GiveExam() {
         body: JSON.stringify({ answers, timeLeft })
       });
     }
-  }, [answers, timeLeft, exam, submitted, examId, API_URL, isOffline]);
+  }, [answers, timeLeft, exam, submitted, examId, API_URL, isOffline, isPractice]);
 
   useEffect(() => {
     if (exam && !submitted && !alreadySubmitted && !isOffline) {
@@ -566,12 +784,44 @@ export default function GiveExam() {
       }, 1000); // Check every 1 second instead of 5 seconds
       return () => clearInterval(iv);
     }
-  }, [exam, submitted, alreadySubmitted, examId, API_URL, isOffline, handleSubmit]);
+  }, [exam, submitted, alreadySubmitted, examId, API_URL, isOffline, handleSubmit, isPractice]);
 
   // Listen to browser online/offline events
   useEffect(() => {
-    const handleOffline = () => setIsOffline(true);
-    const handleOnline  = () => setIsOffline(false);
+    const handleOffline = () => {
+      setIsOffline(true);
+      // reset chances on each fresh disconnect
+      setWifiChances(2);
+      wifiChancesRef.current = 2;
+      setShowWifiIcon(true);
+      // Reset WiFi change mode when going offline
+      setIsWifiChangeMode(false);
+      setWifiChangeTimeLeft(0);
+      // Update refs
+      isWifiChangeModeRef.current = false;
+      wifiChangeTimeLeftRef.current = 0;
+    };
+    const handleOnline = () => {
+      setIsOffline(false);
+      // If we had offline-submitted, attempt to send submission to server once back online
+      if (localStorage.getItem(offlineSubmittedKey)) {
+        if (!submitted && !alreadySubmitted) {
+          setSubmitReason('Tab resize');
+          handleSubmit();
+        }
+        // keep flag so other pages know; it will be cleared by successful handleSubmit inside cleanup
+      }
+
+      setShowWifiIcon(false);
+      // hide icon if no chances left
+      if (wifiChancesRef.current <= 0) setShowWifiIcon(false);
+      // Reset WiFi change mode when coming back online
+      setIsWifiChangeMode(false);
+      setWifiChangeTimeLeft(0);
+      // Update refs
+      isWifiChangeModeRef.current = false;
+      wifiChangeTimeLeftRef.current = 0;
+    };
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online',  handleOnline);
     return () => {
@@ -580,7 +830,57 @@ export default function GiveExam() {
     };
   }, []);
 
-  const handleChange = (i, j) => setAnswers(a => ({ ...a, [i]: j }));
+  // WiFi change timer effect
+  useEffect(() => {
+    let timer;
+    if (isWifiChangeMode && wifiChangeTimeLeft > 0) {
+      timer = setInterval(() => {
+        setWifiChangeTimeLeft(prev => {
+          const newValue = prev <= 1 ? 0 : prev - 1;
+          // Update ref for event handlers
+          wifiChangeTimeLeftRef.current = newValue;
+          if (newValue <= 0) {
+            setIsWifiChangeMode(false);
+            isWifiChangeModeRef.current = false;
+          }
+          return newValue;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isWifiChangeMode, wifiChangeTimeLeft]);
+
+  // Handle WiFi icon click to enable WiFi change mode
+  const handleWifiIconClick = () => {
+    if (wifiChancesRef.current <= 0) return; // no more attempts
+    // consume a chance
+    setWifiChances(c => c - 1);
+    wifiChancesRef.current -= 1;
+    if (isOffline && !isWifiChangeMode) {
+      setIsWifiChangeMode(true);
+      setWifiChangeTimeLeft(30); // 30 seconds
+      // Update refs for event handlers
+      isWifiChangeModeRef.current = true;
+      wifiChangeTimeLeftRef.current = 30;
+      console.log('WiFi change mode activated for 30 seconds');
+    }
+  };
+
+  const handleChange = (i, j) => {
+    setAnswers(a => {
+      const updated = { ...a, [i]: j };
+      // Persist answers for practice mode
+      if (isPractice) {
+        try {
+          const storageKey = `practice_answers_practice`;
+          sessionStorage.setItem(storageKey, JSON.stringify(updated));
+        } catch (e) { console.log('DEBUG: Could not persist practice answers', e); }
+      }
+      return updated;
+    });
+  };
   const fmt = s => String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
 
   // Overlay shown when offline – blocks interaction and informs user
@@ -589,7 +889,35 @@ export default function GiveExam() {
       <div className="bg-white text-red-700 rounded-lg p-6 shadow-xl max-w-md w-full text-center">
         <h2 className="text-2xl font-bold mb-2">No Internet Connection</h2>
         <p className="mb-4">Your exam has been paused. Please reconnect to resume.</p>
-        <div className="text-4xl animate-pulse">⚠️</div>
+        
+        {/* WiFi Change Section */}
+        {showWifiIcon && (
+          <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            {!isWifiChangeMode ? (
+              <>
+                <p className="text-blue-700 text-sm mb-3">Need to change WiFi?</p>
+                <button
+                  onClick={handleWifiIconClick}
+                  className="flex items-center justify-center mx-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <BiWifi className="mr-2 text-xl" />
+                  Change WiFi (30s)
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-green-700 text-sm mb-2">WiFi Change Mode Active</p>
+                <div className="flex items-center justify-center mb-2">
+                  <BiWifiOff className="mr-2 text-xl text-green-600" />
+                  <span className="text-green-700 font-bold text-lg">{wifiChangeTimeLeft}s</span>
+                </div>
+                <p className="text-green-600 text-xs">You can safely change WiFi settings now</p>
+              </>
+            )}
+          </div>
+        )}
+        
+        <div className="text-4xl animate-pulse mt-4">⚠️</div>
       </div>
     </div>
   );
@@ -708,17 +1036,32 @@ export default function GiveExam() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 rounded-full mb-4">
                 <span className="text-2xl text-emerald-600">✓</span>
               </div>
-              <h2 className="text-3xl font-bold text-slate-800 mb-2">Exam Completed</h2>
+              <h2 className="text-3xl font-bold text-slate-800 mb-2">
+                {isPractice ? 'Practice Session Completed!' : 'Exam Completed'}
+              </h2>
               <div className="bg-white border border-slate-200 rounded-lg p-6 shadow-sm inline-block">
-                <div className="text-lg text-slate-600 mb-1">Your Score</div>
+                <div className="text-lg text-slate-600 mb-1">
+                  {isPractice ? 'Practice Score' : 'Your Score'}
+                </div>
                 <div className="text-4xl font-bold text-slate-800">
-                  {score} / {exam.questions.length}
+                  {score !== null ? score : 0} / {exam?.questions?.length || 0}
                 </div>
                 <div className="text-sm text-slate-500 mt-1">
-                  {Math.round((score / exam.questions.length) * 100)}% Correct
+                  {exam?.questions?.length ? Math.round(((score || 0) / exam.questions.length) * 100) : 0}% Correct
                 </div>
                 
-                {submitReason && (
+                {isPractice && (
+                  <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-sm">
+                    🎓 This was a practice session. Your responses were not saved.
+                    {submitReason && (
+                      <div className="mt-2 font-medium">
+                        <strong>Training Trigger:</strong> {submitReason}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {submitReason && !isPractice && (
                   <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
                     <strong>Submission Reason:</strong> {submitReason}
                   </div>
@@ -728,18 +1071,18 @@ export default function GiveExam() {
                 <div className="mt-4 pt-4 border-t border-slate-200">
                   <div className="grid grid-cols-3 gap-4 text-center">
                     <div>
-                      <div className="text-2xl font-bold text-emerald-600">{score}</div>
+                      <div className="text-2xl font-bold text-emerald-600">{score || 0}</div>
                       <div className="text-xs text-slate-500">Correct</div>
                     </div>
                     <div>
                       <div className="text-2xl font-bold text-red-600">
-                        {Object.keys(answers).length - score}
+                        {Object.keys(answers).length - (score || 0)}
                       </div>
                       <div className="text-xs text-slate-500">Incorrect</div>
                     </div>
                     <div>
                       <div className="text-2xl font-bold text-amber-600">
-                        {exam.questions.length - Object.keys(answers).length}
+                        {(exam?.questions?.length || 0) - Object.keys(answers).length}
                       </div>
                       <div className="text-xs text-slate-500">Unattempted</div>
                     </div>
@@ -835,13 +1178,102 @@ export default function GiveExam() {
                 </div>
               );
             })}
+            {/* Restart button after submission */}
+            {isPractice && (
+              <div className="text-center mb-12">
+                <button
+                  onClick={async () => {
+                    try {
+                      // Check camera permission first
+                      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                      stream.getTracks().forEach(t => t.stop());
+
+                      // Open new practice session in full window
+                      const token = sessionStorage.getItem('token') || '';
+                      const url = `${window.location.origin}/give-exam/practice?tk=${encodeURIComponent(token)}`;
+                      const features = [
+                        `left=0`,
+                        `top=0`,
+                        `width=${screen.availWidth}`,
+                        `height=${screen.availHeight}`,
+                        `fullscreen=yes`,
+                        `toolbar=no`,
+                        `menubar=no`,
+                        `location=no`,
+                        `status=no`,
+                        `scrollbars=no`,
+                        `resizable=no`
+                      ].join(',');
+                      const win = window.open(url, '_blank', features);
+                      if (win) {
+                        win.moveTo(0, 0);
+                        win.resizeTo(screen.availWidth, screen.availHeight);
+                        win.focus();
+                        // Close current window after opening new one
+                        setTimeout(() => {
+                          window.close();
+                        }, 500);
+                      }
+                    } catch {
+                      alert('⚠️ Please enable your camera to start another practice session.');
+                    }
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg shadow-md text-sm"
+                >
+                  Try Again With Another Action
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <>
-            {/* MCQ Cards - same size but professional styling */}
+            {/* Practice instructions */}
+            {isPractice && (
+              <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold mb-2">Before you answer, please perform these actions:</h3>
+                <ol className="list-decimal list-inside space-y-1 text-sm">
+                  <li>Move your head to the <strong>right</strong> and <strong>left</strong> for a few seconds. The system should detect and auto-submit.</li>
+                  <li>Briefly <strong>remove your face</strong> from the camera frame.</li>
+                  <li><strong>Change the browser tab / minimize window</strong> to simulate leaving the exam.</li>
+                  <li>Hold up or glance at a <strong>mobile phone</strong> in view of the camera.</li>
+                  <li><strong>Internet Connection Test:</strong> First of all ther internet connection should be stable durig the exam, if not so try bychance, Disconnect your internet without changing your tab (like unplug your internet or close hotspot from mobile). When there's no internet connection, a notice will appear with a button. Click that button and you will be given 30 seconds to only change your 
+                  internet connection or connect it from the internet icon. Return within the time limit - that's good.
+                   Otherwise, it will be submitted automatically and any other action will be detected as tab changing.
+                   You can apply for 30s more only one more time next time it will not allow to access the internet connection icon.</li>
+                </ol>
+                <p className="text-xs text-blue-700 mt-2">Each of these actions is flagged as cheating in real exams.</p>
+              </div>
+            )}
+
+            {/* MCQ Cards */}
             {exam.questions.map((q,i) => (
-              <div key={i} className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6 hover:shadow-md transition-all duration-200 hover:border-slate-300">
-                <h3 className="text-xl font-semibold text-slate-800 mb-4">Q{i+1}. {q.questionText}</h3>
+              <div 
+                key={i} 
+                className="bg-white border border-slate-200 rounded-lg shadow-sm p-6 mb-6 hover:shadow-md transition-all duration-200 hover:border-slate-300"
+                style={{
+                  userSelect: 'none',
+                  webkitUserSelect: 'none',
+                  mozUserSelect: 'none',
+                  msUserSelect: 'none',
+                  webkitTouchCallout: 'none',
+                  webkitTapHighlightColor: 'transparent'
+                }}
+                onCopy={preventCopy}
+                onContextMenu={preventRightClick}
+                onSelectStart={preventCopy}
+                onDragStart={preventCopy}
+              >
+                <h3 
+                  className="text-xl font-semibold text-slate-800 mb-4"
+                  style={{
+                    userSelect: 'none',
+                    webkitUserSelect: 'none',
+                    mozUserSelect: 'none',
+                    msUserSelect: 'none'
+                  }}
+                >
+                  Q{i+1}. {q.questionText}
+                </h3>
                 <div className="space-y-3">
                   {q.options.map((opt,j) => (
                     <label key={j} className={`group flex items-center space-x-3 p-3 rounded-lg border-2 cursor-pointer transition-all duration-150 ${
@@ -855,9 +1287,17 @@ export default function GiveExam() {
                         onChange={() => handleChange(i,j)}
                         className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 focus:ring-2"
                       />
-                      <span className={`flex-1 ${
-                        answers[i] === j ? 'text-blue-800 font-medium' : 'text-slate-700'
-                      }`}>
+                      <span 
+                        className={`flex-1 ${
+                          answers[i] === j ? 'text-blue-800 font-medium' : 'text-slate-700'
+                        }`}
+                        style={{
+                          userSelect: 'none',
+                          webkitUserSelect: 'none',
+                          mozUserSelect: 'none',
+                          msUserSelect: 'none'
+                        }}
+                      >
                         {opt}
                       </span>
                     </label>
@@ -869,7 +1309,10 @@ export default function GiveExam() {
             {/* Submit button - professional styling */}
             <div className="text-center mt-8 pb-8">
               <button
-                onClick={() => handleSubmit(false)}
+                onClick={() => {
+                  console.log('🔘 Submit button clicked:', { isPractice, submitted, exam: !!exam });
+                  handleSubmit(false);
+                }}
                 disabled={submitted}
                 className={`px-8 py-3 text-lg font-medium rounded-lg transition-all duration-200 ${
                   submitted
@@ -880,10 +1323,10 @@ export default function GiveExam() {
                 {submitted ? (
                   <>
                     <BiLoaderAlt className="inline animate-spin mr-2" />
-                    Submitted
+                    {isPractice ? 'Practice Completed' : 'Submitted'}
                   </>
                 ) : (
-                  'Submit Exam'
+                  isPractice ? 'Complete Practice' : 'Submit Exam'
                 )}
               </button>
               

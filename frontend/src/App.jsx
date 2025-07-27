@@ -23,6 +23,7 @@ import ViewResultDetails from './pages/ViewResultDetails';
 import StudentProfile from './pages/StudentProfile';
 import GiveExam from './pages/GiveExam';
 import ViewAnswers from './pages/ViewAnswers';
+import STraining from './pages/STraining';
 
 // Teacher Pages
 import TDashboard from './pages/TDashboard';
@@ -66,6 +67,9 @@ export default function App() {
         } />
         <Route path="/view-result-details/:subjectId" element={
           <PrivateRoute allowedRoles={['student']}><ViewResultDetails /></PrivateRoute>
+        } />
+        <Route path="/student/training" element={
+          <PrivateRoute allowedRoles={['student']}><STraining /></PrivateRoute>
         } />
         <Route path="/student-profile" element={
           <PrivateRoute allowedRoles={['student']}><StudentProfile /></PrivateRoute>

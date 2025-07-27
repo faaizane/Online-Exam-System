@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/SSidebar';
 import StudentHeader from '../components/SHeader';
+import StudentTour from '../components/StudentTour';
+
 
 // Status component with styling
 const StatusBadge = ({ status }) => {
@@ -40,6 +42,7 @@ export default function SDashboard() {
   const toggleSidebar = () => setSidebarOpen(o => !o);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 
   // Helper function to format semester with ordinal suffix
   const formatSemester = (semester) => {
@@ -187,8 +190,9 @@ export default function SDashboard() {
   }, [API_BASE_URL]);
 
   return (
-    <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden">
+    <div className="min-h-screen flex bg-[#f9f9f9] overflow-x-hidden relative">
       <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      {/* 🧭 Guided Training Overlay removed per new flow */}
 
       {/* sidebar shifts in at 945px now */}
       <div className="flex-1 flex flex-col [@media(min-width:945px)]:ml-64">

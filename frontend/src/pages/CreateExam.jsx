@@ -33,17 +33,18 @@ export default function CreateExam() {
   const [popup, setPopup] = useState({ show: false, message: '', type: '' });
   const fileInputRef = useRef(null);
 
-  // Fetch subjects by year
+  // Fetch subjects for the current year and teacher
   useEffect(() => {
     async function fetchSubjects() {
-      if (!form.year) {
+      const currentYear = new Date().getFullYear();
+      if (!currentYear) {
         setSubjects([]);
         setForm(f => ({ ...f, subject: '', session: '', semester: '' }));
         return;
       }
       try {
         const token = sessionStorage.getItem('token'); // session
-        const res = await fetch(`${API_BASE_URL}/api/subjects?year=${form.year}`, {
+        const res = await fetch(`${API_BASE_URL}/api/subjects?year=${currentYear}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (!res.ok) throw new Error();
@@ -55,7 +56,7 @@ export default function CreateExam() {
       }
     }
     fetchSubjects();
-  }, [form.year]);
+  }, []);
 
   // Form input changes
   const handleFormChange = e => {
@@ -66,11 +67,12 @@ export default function CreateExam() {
         setForm(f => ({
           ...f,
           subject: sel._id,
+          year: sel.year || '',
           session: sel.session || '',
           semester: sel.semester ? sel.semester.toString() : ''
         }));
       } else {
-        setForm(f => ({ ...f, subject: '', session: '', semester: '' }));
+        setForm(f => ({ ...f, subject: '', year: '', session: '', semester: '' }));
       }
     } else {
       setForm(f => ({ ...f, [name]: value }));
@@ -211,19 +213,6 @@ export default function CreateExam() {
           {/* Form Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block mb-2 font-semibold text-[#002855] text-sm">Year</label>
-              <input
-                name="year"
-                type="text"
-                value={form.year}
-                onChange={handleFormChange}
-                placeholder="e.g. 2025"
-                className="w-full border-2 border-gray-300 px-4 py-3 rounded-xl focus:ring-4 focus:ring-[#002855]/20 focus:border-[#002855] transition-all duration-200 bg-white shadow-sm hover:border-gray-400"
-                required
-              />
-            </div>
-
-            <div>
               <label className="block mb-2 font-semibold text-[#002855] text-sm">Subject</label>
               <div className="relative">
                 <select
@@ -246,6 +235,17 @@ export default function CreateExam() {
                   </svg>
                 </div>
               </div>
+            </div>
+
+            <div>
+              <label className="block mb-2 font-semibold text-[#002855] text-sm">Year</label>
+              <input
+                name="year"
+                type="text"
+                value={form.year}
+                disabled
+                className="w-full bg-gray-50 border-2 border-gray-200 px-4 py-3 rounded-xl text-gray-600 shadow-sm cursor-not-allowed"
+              />
             </div>
 
             <div>

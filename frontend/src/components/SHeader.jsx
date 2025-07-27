@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom';
 export default function SHeader({ toggleSidebar }) {
   const [user, setUser] = useState({ name: '', email: '' });
   const [showNotice, setShowNotice] = useState(false);
+  const [initialNotice, setInitialNotice] = useState(false); // distinguishes first-time notice
   const navigate = useNavigate();
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -25,6 +26,7 @@ export default function SHeader({ toggleSidebar }) {
 
         const noticeSeen = sessionStorage.getItem('noticeSeen'); // sessionStorage for exam data
         if (!noticeSeen) {
+          setInitialNotice(true);
           setShowNotice(true);
         }
       } catch {
@@ -35,8 +37,8 @@ export default function SHeader({ toggleSidebar }) {
   }, [navigate, API_BASE_URL]);
 
   const handleCloseNotice = () => {
+    sessionStorage.setItem('noticeSeen', 'true');
     setShowNotice(false);
-    sessionStorage.setItem('noticeSeen', 'true'); // sessionStorage for exam data
   };
 
   return (
@@ -50,7 +52,10 @@ export default function SHeader({ toggleSidebar }) {
         </button>
 
         <div
-          onClick={() => setShowNotice(true)}
+          onClick={() => {
+            setInitialNotice(false);
+            setShowNotice(true);
+          }}
           className="flex items-center gap-1 cursor-pointer 
                      [@media(max-width:500px)]:order-2"
           title="View Notice"
@@ -100,6 +105,7 @@ export default function SHeader({ toggleSidebar }) {
                   </div>
                   <h2 className="text-xl font-semibold text-gray-900">Exam Instructions</h2>
                 </div>
+                {/* Close button */}
                 <button
                   onClick={handleCloseNotice}
                   className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
@@ -112,6 +118,15 @@ export default function SHeader({ toggleSidebar }) {
             {/* Content */}
             <div className="p-6 max-h-[70vh] overflow-y-auto">
               <div className="space-y-4 text-gray-600 text-sm leading-relaxed">
+                {/* ➕ Mandatory Training bullet */}
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  </div>
+                  <p>
+                    <strong>Training is <u>compulsory</u>.</strong> The practice session will show you exactly how our system detects face visibility and suspicious behaviour. <br className="[@media(max-width:500px)]:hidden"/>Please complete the training before attempting any real exam.
+                  </p>
+                </div>
                 
                 <div className="flex items-start gap-3">
                   <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
@@ -119,6 +134,8 @@ export default function SHeader({ toggleSidebar }) {
                   </div>
                   <p>Maintain a <strong>stable internet connection</strong> throughout the exam.</p>
                 </div>
+
+                
 
                 <div className="flex items-start gap-3">
                   <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
@@ -128,6 +145,13 @@ export default function SHeader({ toggleSidebar }) {
                     <p><strong>Do not refresh, close, minimize, switch tabs, or open other applications</strong> during the exam.</p>
                     <p className="mt-1 text-red-600">Any violation will result in automatic submission.</p>
                   </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  </div>
+                  <p><strong>In case of network disconnection</strong>, you will have <strong>only 30 seconds</strong> to change your WiFi after pressing the&nbsp;<strong>WiFi Change</strong> button. Ensure you reconnect within this window.</p>
                 </div>
 
                 <div className="flex items-start gap-3">
@@ -166,13 +190,31 @@ export default function SHeader({ toggleSidebar }) {
             {/* Footer */}
             <div className="border-t border-gray-100 p-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                <p className="text-xs text-gray-500">Please read all instructions carefully before proceeding.</p>
-                <button
-                  onClick={handleCloseNotice}
-                  className="bg-[#002855] hover:bg-[#003366] text-white px-3 py-1.5 md:px-5 md:py-2 rounded-lg font-medium transition-colors text-sm w-fit self-end md:self-auto"
-                >
-                  Got it
-                </button>
+                 {initialNotice ? (
+                   <>
+                     <p className="text-xs text-gray-500">After reading, start the training session to continue.</p>
+                     <button
+                       onClick={() => {
+                         sessionStorage.setItem('noticeSeen', 'true');
+                         navigate('/student/training');
+                         setShowNotice(false);
+                       }}
+                       className="bg-[#002855] hover:bg-[#003366] text-white px-4 py-1.5 md:px-6 md:py-2 rounded-lg font-medium transition-colors text-sm w-fit self-end md:self-auto"
+                     >
+                       Do Training
+                     </button>
+                   </>
+                 ) : (
+                   <>
+                     <p className="text-xs text-gray-500">Please read all instructions carefully.</p>
+                     <button
+                       onClick={handleCloseNotice}
+                       className="bg-[#002855] hover:bg-[#003366] text-white px-3 py-1.5 md:px-5 md:py-2 rounded-lg font-medium transition-colors text-sm w-fit self-end md:self-auto"
+                     >
+                       Got it
+                     </button>
+                   </>
+                 )}
               </div>
             </div>
           </div>
