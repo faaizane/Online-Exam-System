@@ -86,11 +86,11 @@ This section describes the structure (fields) for Teacher and Student as user ob
 Each teacher user object contains the following fields:
 
 - **name**: Full name of the teacher  
-  _Example_: `Sadiq Khan`
+  _Example_: `Teacher Name`
 - **email**: Email address  
-  _Example_: `sadiq@uetpeshawar.edu.pk`
+  _Example_: `jhon@uetpeshawar.edu.pk`
 - **password**: Password (will be hashed)  
-  _Example_: `sadiq123`
+  _Example_: `jhon123`
 - **role**: User role  
   _Example_: `teacher`
 - **department**: Department name  
@@ -103,7 +103,7 @@ Each teacher user object contains the following fields:
 Each student user object contains the following fields:
 
 - **name**: Full name of the student  
-  _Example_: `Faizan Elahi`
+  _Example_: `Student Name`
 - **email**: Email address  
   _Example_: `21pwbcs0001@uetpeshawar.edu.pk`
 - **password**: Password (will be hashed)  
@@ -154,6 +154,7 @@ These variables are required in the camera-detection `.env` file:
 - Node.js and npm installed
 - Python 3.9+ installed
 - MongoDB installed and running
+- Nodemon installed
 
 ### Steps
 
